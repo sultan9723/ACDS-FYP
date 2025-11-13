@@ -1,1 +1,12 @@
-
+fastapi
+uvicorn
+pandas
+scikit-learn
+streamlit
+pymongo
+python-dotenv
+apscheduler
+requests
+black
+flake8
+pytest
