@@ -1,14 +1,31 @@
-version: "3.9"
-
 services:
- backend:
-    build: ./backend
-   ports:
-     - "8000:8000"
-    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
- 
-  frontend:
-  build: ./frontend
-   ports:
-     - "8501:8501"
-   command: streamlit run dashboard/streamlit_dashboard.py
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: acds-backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://acds:acds123@mongo:27017/acds_db?authSource=admin
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6.0
+    container_name: acds-mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: acds
+      MONGO_INITDB_ROOT_PASSWORD: acds123
+      MONGO_INITDB_DATABASE: acds_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongodata:
