@@ -19,9 +19,9 @@ const ThreatMonitoringTable = () => {
   };
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-lg">
+    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl">
       <div className="p-4 border-b border-slate-800">
-        <h3 className="text-sm font-semibold text-slate-300">
+        <h3 className="text-sm font-semibold text-emerald-400/80">
           Threat Monitoring
         </h3>
       </div>
@@ -41,7 +41,7 @@ const ThreatMonitoringTable = () => {
               <tr
                 key={threat?.id || Math.random()}
                 onClick={() => threat?.id && handleRowClick(threat.id)}
-                className="hover:bg-slate-800/30 transition-colors cursor-pointer"
+                className="hover:bg-emerald-500/5 transition-colors cursor-pointer"
               >
                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                   {threat?.time || "N/A"}

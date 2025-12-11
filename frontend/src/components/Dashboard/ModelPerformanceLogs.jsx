@@ -10,10 +10,10 @@ const ModelPerformanceLogs = () => {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
-        Model Performance
+      <h2 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-4">
+        Model Performance Logs
       </h2>
-      <div className="bg-slate-900/60 border border-slate-800 rounded-lg">
+      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-slate-500 uppercase bg-slate-900/30">
@@ -29,7 +29,7 @@ const ModelPerformanceLogs = () => {
               {safeLogs.map((log, index) => (
                 <tr
                   key={log?.id || index}
-                  className="hover:bg-slate-800/30 transition-colors"
+                  className="hover:bg-emerald-500/5 transition-colors"
                 >
                   <td className="px-4 py-3 text-slate-400 font-mono text-xs">
                     {log?.date || "N/A"}
@@ -37,7 +37,7 @@ const ModelPerformanceLogs = () => {
                   <td className="px-4 py-3 text-slate-300">
                     {log?.type || "N/A"}
                   </td>
-                  <td className="px-4 py-3 text-green-400 text-xs">
+                  <td className="px-4 py-3 text-emerald-400 text-xs">
                     {log?.decision || "N/A"}
                   </td>
                   <td className="px-4 py-3 text-slate-300">

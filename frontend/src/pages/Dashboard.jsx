@@ -50,13 +50,18 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <h1 className="text-2xl font-bold text-slate-100 tracking-wide uppercase">
-        Autonomous Cyber Defense System
-      </h1>
+      <div>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-200 bg-clip-text text-transparent tracking-wide uppercase">
+          Autonomous Cyber Defense System
+        </h1>
+        <p className="text-slate-500 text-sm mt-1">
+          Real-time threat monitoring and response
+        </p>
+      </div>
 
       {/* Overview Section */}
       <div>
-        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-4">
           Overview
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

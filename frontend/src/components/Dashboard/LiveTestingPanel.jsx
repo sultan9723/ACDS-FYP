@@ -47,12 +47,12 @@ const LiveTestingPanel = () => {
       : 0;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-cyan-500/20 rounded-lg">
-            <BoltIcon className="h-6 w-6 text-cyan-400" />
+          <div className="p-2 bg-emerald-500/20 rounded-lg">
+            <BoltIcon className="h-6 w-6 text-emerald-400" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-100">
@@ -78,7 +78,7 @@ const LiveTestingPanel = () => {
             value={testCount}
             onChange={(e) => setTestCount(Number(e.target.value))}
             disabled={testRunning}
-            className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value={5}>5 emails</option>
             <option value={10}>10 emails</option>
@@ -93,7 +93,7 @@ const LiveTestingPanel = () => {
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
             testRunning
               ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-600 hover:to-blue-700 shadow-lg shadow-cyan-500/25"
+              : "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25"
           }`}
         >
           {testRunning ? (
@@ -113,7 +113,7 @@ const LiveTestingPanel = () => {
       {/* Stats Cards */}
       {safeResults.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-700/50 rounded-lg p-4">
+          <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
             <div className="flex items-center space-x-2 text-slate-400 mb-1">
               <DocumentTextIcon className="h-4 w-4" />
               <span className="text-xs uppercase">Processed</span>
@@ -123,7 +123,7 @@ const LiveTestingPanel = () => {
             </p>
           </div>
 
-          <div className="bg-slate-700/50 rounded-lg p-4">
+          <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
             <div className="flex items-center space-x-2 text-red-400 mb-1">
               <ShieldExclamationIcon className="h-4 w-4" />
               <span className="text-xs uppercase">Threats Found</span>
@@ -133,7 +133,7 @@ const LiveTestingPanel = () => {
             </p>
           </div>
 
-          <div className="bg-slate-700/50 rounded-lg p-4">
+          <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
             <div className="flex items-center space-x-2 text-green-400 mb-1">
               <CheckCircleIcon className="h-4 w-4" />
               <span className="text-xs uppercase">Auto-Resolved</span>
@@ -143,12 +143,12 @@ const LiveTestingPanel = () => {
             </p>
           </div>
 
-          <div className="bg-slate-700/50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 text-cyan-400 mb-1">
+          <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700/50">
+            <div className="flex items-center space-x-2 text-emerald-400 mb-1">
               <CheckCircleIcon className="h-4 w-4" />
               <span className="text-xs uppercase">Accuracy</span>
             </div>
-            <p className="text-2xl font-bold text-cyan-400">{accuracy}%</p>
+            <p className="text-2xl font-bold text-emerald-400">{accuracy}%</p>
           </div>
         </div>
       )}
@@ -222,7 +222,7 @@ const LiveTestingPanel = () => {
       {/* Empty State */}
       {safeResults.length === 0 && !testRunning && (
         <div className="text-center py-8 text-slate-500">
-          <BoltIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <BoltIcon className="h-12 w-12 mx-auto mb-3 opacity-50 text-emerald-500/50" />
           <p>Click "Run Live Test" to start automated threat detection</p>
           <p className="text-sm mt-1">
             Tests use real phishing samples from the dataset

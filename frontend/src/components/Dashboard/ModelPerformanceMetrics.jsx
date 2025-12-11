@@ -30,12 +30,12 @@ const ModelPerformanceMetrics = () => {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+      <h2 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-4">
         Model Performance
       </h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Accuracy Over Time */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4">
+        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-slate-300 mb-4">
             Accuracy Over Time
           </h3>
@@ -50,8 +50,8 @@ const ModelPerformanceMetrics = () => {
                     x2="0"
                     y2="1"
                   >
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -70,15 +70,16 @@ const ModelPerformanceMetrics = () => {
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "#0f172a",
-                    borderColor: "#334155",
+                    borderColor: "#10b981",
                     color: "#f1f5f9",
                     fontSize: 12,
+                    borderRadius: 8,
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="accuracy"
-                  stroke="#3b82f6"
+                  stroke="#10b981"
                   strokeWidth={2}
                   fill="url(#colorAccuracy)"
                 />
@@ -88,40 +89,40 @@ const ModelPerformanceMetrics = () => {
         </div>
 
         {/* Confusion Matrix */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4">
+        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-slate-300 mb-4">
             Confusion Matrix
           </h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-950/50 p-4 rounded text-center">
-              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg text-center">
+              <p className="text-emerald-400/80 text-xs uppercase tracking-wider mb-1">
                 TP
               </p>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-bold text-emerald-400">
                 {safeConfusionData.tp || 0}
               </p>
             </div>
-            <div className="bg-slate-950/50 p-4 rounded text-center">
-              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">
+            <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-lg text-center">
+              <p className="text-red-400/80 text-xs uppercase tracking-wider mb-1">
                 FP
               </p>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-bold text-red-400">
                 {safeConfusionData.fp || 0}
               </p>
             </div>
-            <div className="bg-slate-950/50 p-4 rounded text-center">
-              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">
+            <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-lg text-center">
+              <p className="text-orange-400/80 text-xs uppercase tracking-wider mb-1">
                 FN
               </p>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-bold text-orange-400">
                 {safeConfusionData.fn || 0}
               </p>
             </div>
-            <div className="bg-slate-950/50 p-4 rounded text-center">
-              <p className="text-slate-500 text-xs uppercase tracking-wider mb-1">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg text-center">
+              <p className="text-emerald-400/80 text-xs uppercase tracking-wider mb-1">
                 TN
               </p>
-              <p className="text-2xl font-bold text-slate-200">
+              <p className="text-2xl font-bold text-emerald-400">
                 {safeConfusionData.tn || 0}
               </p>
             </div>

@@ -13,7 +13,7 @@ import { useDashboard } from "../../context/DashboardContext";
 const ThreatTypesChart = () => {
   const dashboardData = useDashboard() || {};
   const { threatTypesData = [] } = dashboardData;
-  const colors = ["#64748b", "#3b82f6", "#1e3a5f"];
+  const colors = ["#10b981", "#34d399", "#6ee7b7"];
 
   // Ensure data is an array
   const safeData = Array.isArray(threatTypesData) ? threatTypesData : [];
@@ -22,8 +22,8 @@ const ThreatTypesChart = () => {
   const topThreats = safeData.slice(0, 3);
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-4">
+    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+      <h3 className="text-sm font-semibold text-emerald-400/80 mb-4">
         Top Threat Types
       </h3>
       <div className="flex gap-6">
@@ -51,9 +51,10 @@ const ThreatTypesChart = () => {
                 cursor={{ fill: "#1e293b" }}
                 contentStyle={{
                   backgroundColor: "#0f172a",
-                  borderColor: "#334155",
+                  borderColor: "#10b981",
                   color: "#f1f5f9",
                   fontSize: 12,
+                  borderRadius: 8,
                 }}
               />
               <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={40}>

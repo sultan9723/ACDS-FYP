@@ -7,7 +7,7 @@ const IncidentDetails = () => {
 
   if (!selectedIncident) {
     return (
-      <div className="bg-slate-900/60 border border-slate-800 rounded-lg p-6 h-full flex items-center justify-center">
+      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center">
         <p className="text-slate-500 text-sm">
           Select an email to view details
         </p>
@@ -16,9 +16,9 @@ const IncidentDetails = () => {
   }
 
   return (
-    <div className="bg-slate-900/60 border border-slate-800 rounded-lg h-full">
+    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl h-full">
       <div className="p-4 border-b border-slate-800">
-        <h3 className="text-sm font-semibold text-slate-300">
+        <h3 className="text-sm font-semibold text-emerald-400/80">
           Incident Details
         </h3>
       </div>
@@ -82,16 +82,16 @@ const IncidentDetails = () => {
 
         {/* Analyst Ticket */}
         <div className="text-xs text-slate-400">
-          A <span className="text-blue-400">ticket</span> logged for{" "}
+          A <span className="text-emerald-400">ticket</span> logged for{" "}
           <span className="text-slate-300">SOC analyst</span>
         </div>
 
         {/* Feedback Buttons */}
         <div className="flex gap-2 pt-2">
-          <button className="flex-1 px-3 py-2 text-xs font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded hover:bg-slate-700/50 transition-colors">
+          <button className="flex-1 px-3 py-2 text-xs font-medium text-slate-300 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-700/50 transition-colors">
             True Positive
           </button>
-          <button className="flex-1 px-3 py-2 text-xs font-medium text-blue-400 bg-blue-900/20 border border-blue-800/50 rounded hover:bg-blue-900/30 transition-colors">
+          <button className="flex-1 px-3 py-2 text-xs font-medium text-emerald-400 bg-emerald-900/20 border border-emerald-800/50 rounded-lg hover:bg-emerald-900/30 transition-colors">
             False Positive
           </button>
         </div>
