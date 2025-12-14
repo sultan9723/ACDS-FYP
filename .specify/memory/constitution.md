@@ -1,55 +1,66 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- Sync Impact Report:
+Version change: 0.0.0 -> 0.1.0
+List of modified principles:
+  - Initial creation of all principles.
+Added sections:
+  - Project Definition
+  - Core Principles
+  - Technology & Development Guidelines
+  - Governance
+Removed sections: None
+Templates requiring updates:
+  - .specify/templates/plan-template.md ⚠ pending
+  - .specify/templates/spec-template.md ⚠ pending
+  - .specify/templates/tasks-template.md ⚠ pending
+  - All command files in .specify/templates/commands/*.md ⚠ pending
+  - Any runtime guidance docs (e.g., README.md, docs/quickstart.md) ⚠ pending
+Follow-up TODOs:
+  - TODO(Preamble): Complete the last sentence.
+  - TODO(RATIFICATION_DATE): User needs to provide the original adoption date.
+  - TODO(PRINCIPLE_AI_USAGE): Clarify the "deterministic fallback" principle.
+  - TODO(AGENT_BEHAVIOR): Confirm completion of "Agents must request clarification when ambiguous."
+-->
+# ACDS Constitution (Authoritative)
+> 🔒 *Authoritative Document*
+>
+> This constitution is fully authored by the user.
+> Agents MUST NOT infer, autogenerate, or alter any content of this constitution without explicit user instruction.
+
+## Project Definition
+ACDS (Autonomous Cyber Defense System) is an AI-assisted SOC support platform designed to prepare, structure, and explain security investigations, not to replace human analysis.
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. ACDS Role Preservation
+All changes must preserve ACDS as an investigation-preparation system.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Responsible AI Usage
+*   Training and inference pipelines must be separable.
+*   AI usage must support deterministic fallback. In cases where AI/ML models cannot make a confident prediction, or encounter errors, the system MUST revert to a pre-defined, predictable, and auditable non-AI based behavior (e.g., rule-based classification, manual review queue, or explicit 'uncertain' classification with a default action) rather than failing unpredictably or making random decisions.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+## Technology & Development Guidelines
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### III. Technology Stack Principles
+*   The system must support local development, with explicit exceptions for cloud dependencies where justified (e.g., managed database services like cloud MongoDB).
+*   Containerization is optional but supported.
+*   The project must remain deployable without proprietary lock-in.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### IV. Version Control & Change Management
+*   All changes must be tracked using Git.
+*   No direct commits are allowed on the main branch.
+*   Feature work shall be performed on isolated feature branches.
+*   Each feature branch must represent one logical change.
+*   Commits must be descriptive and scoped to a single purpose.
+*   Pull requests must be used to merge changes into the develop branch.
+*   Automated agents must never rewrite existing working logic without explicit intent.
 
-### [PRINCIPLE_6_NAME]
-
-
-[PRINCIPLE__DESCRIPTION]
-
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
-
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Agent Behavior Constraints
+*   Agents must respect this constitution at all times.
+*   Agents must not override human intent.
+*   Agents must request clarification when ambiguous.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
-
+<!-- This section requires user input to define specific governance rules -->
 [GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 0.2.0 | **Ratified**: TODO(RATIFICATION_DATE): User needs to provide the original adoption date. | **Last Amended**: 2025-12-14

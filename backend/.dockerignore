@@ -1,0 +1,35 @@
+# .dockerignore
+# Ignore common development and build artifacts for Docker images
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+pip-log.txt
+
+# Environment variables
+.env
+*.log
+
+# Database (if using SQLite for development/testing)
+*.sqlite3
+*.sqlite3-journal
+
+# ML Model artifacts
+ml/models/*.pkl
+ml/models/*.json
+
+# Docker-specific
+Dockerfile*
+.dockerignore
+
+# Data - if datasets or temporary data are stored here and not meant for the image
+# Adjust this based on where Hugging Face datasets are stored relative to the Docker build context
+# data/
+
