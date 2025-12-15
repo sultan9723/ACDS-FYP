@@ -16,16 +16,16 @@ class EmailDataLoader:
     Handles loading email datasets, specifically from Hugging Face,
     and converting them into Email model instances.
     """
-    def __init__(self, dataset_name: str = "your_org/phishing_email_dataset", 
+    def __init__(self, dataset_name: str = "zefang-liu/phishing-email-dataset", 
                  split: str = "train", 
-                 raw_text_column: str = "text",
+                 raw_text_column: str = "Email Text",
                  cache_dir: Optional[str] = None):
         self.dataset_name = dataset_name
         self.split = split
         self.raw_text_column = raw_text_column
         self.cache_dir = cache_dir if cache_dir else os.path.join(os.getcwd(), ".hf_cache")
         os.makedirs(self.cache_dir, exist_ok=True)
-        logger.info(f"Initialized EmailDataLoader for dataset: {dataset_name}, split: {split}")
+        logger.info(f"Initialized EmailDataLoader for dataset: {dataset_name}, split: {split}, column: {raw_text_column}")
 
     def load_hf_dataset(self) -> Dataset:
         """
@@ -93,27 +93,47 @@ class EmailDataLoader:
         """
         dataset = self.load_hf_dataset()
         emails: List[Email] = []
-        for item in dataset:
-            raw_email_text = item.get(self.raw_text_column)
-            if raw_email_text:
-                parsed_data = self.parse_email_from_raw_text(raw_email_text)
-                if parsed_data:
-                    try:
-                        email_instance = Email(**parsed_data)
-                        emails.append(email_instance)
-                    except ValidationError as e:
-                        logger.error(f"Validation error for email data: {e}. Data: {parsed_data}")
-                    except Exception as e:
-                        logger.error(f"Unexpected error creating Email model: {e}. Data: {parsed_data}")
+        skipped = 0
+        
+        for idx, item in enumerate(dataset):
+            # Try multiple possible column names
+            raw_email_text = None
+            for col_name in [self.raw_text_column, "Email Text", "text", "content", "email", "body"]:
+                if col_name in item:
+                    raw_email_text = (item.get(col_name) or "").strip()
+                    if raw_email_text and raw_email_text != "empty":
+                        break
+            
+            if not raw_email_text or raw_email_text == "empty":
+                skipped += 1
+                if skipped <= 3:  # Only log first 3 skips
+                    logger.debug(f"Skipping item {idx}: no valid text found")
+                continue
+            
+            parsed_data = self.parse_email_from_raw_text(raw_email_text)
+            if parsed_data:
+                try:
+                    email_instance = Email(**parsed_data)
+                    emails.append(email_instance)
+                    
+                    if len(emails) % 10 == 0:
+                        logger.info(f"Processed {len(emails)} emails so far...")
+                except ValidationError as e:
+                    logger.error(f"Validation error for email data: {e}. Data: {parsed_data}")
+                    skipped += 1
+                except Exception as e:
+                    logger.error(f"Unexpected error creating Email model: {e}. Data: {parsed_data}")
+                    skipped += 1
             else:
-                logger.warning(f"Raw email text column '{self.raw_text_column}' not found or empty in item: {item}")
-        logger.info(f"Successfully loaded and parsed {len(emails)} emails from dataset.")
+                skipped += 1
+                
+        logger.info(f"Successfully loaded and parsed {len(emails)} emails from dataset (skipped {skipped}).")
         return emails
 
 # Example of how to get a data loader
 def get_email_data_loader(dataset_name: str = "your_org/phishing_email_dataset", 
                           split: str = "train", 
-                          raw_text_column: str = "text") -> EmailDataLoader:
+                          raw_text_column: str = "Email Text") -> EmailDataLoader:
     """
     Returns a singleton instance of EmailDataLoader.
     """

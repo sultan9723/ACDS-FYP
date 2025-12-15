@@ -23,6 +23,9 @@ from backend.src.services.phishing_detection.report_generator import get_report_
 async def run_phishing_detection_workflow():
     print("--- Starting Phishing Detection Workflow Example ---")
 
+    # Create reports directory if it doesn't exist
+    os.makedirs("reports", exist_ok=True)
+
     # Debugging: Print MONGO_URI and DB_NAME to confirm they are loaded
     from backend.src.services.phishing_detection.database import MONGO_URI, DB_NAME
     print(f"DEBUG: MONGO_URI from env: {MONGO_URI}")
@@ -33,9 +36,9 @@ async def run_phishing_detection_workflow():
 
     # Initialize agents and managers
     data_loader = get_email_data_loader(
-        dataset_name="danish/phishing_emails", # Example Hugging Face dataset
+        dataset_name="zefang-liu/phishing-email-dataset", # Correct Hugging Face dataset
         split="train", 
-        raw_text_column="text"
+        raw_text_column="Email Text"
     )
     detection_agent = get_detection_agent(use_ml=False) # Start with rule-based
     incident_manager = await get_incident_manager()
@@ -43,19 +46,13 @@ async def run_phishing_detection_workflow():
     orchestration_trigger = get_orchestration_trigger()
     report_generator = get_report_generator()
 
-    # 1. Load Emails (using a placeholder dataset)
-    print("\n1. Loading emails from Hugging Face dataset (placeholder)...")
-    # Using a simple mock email for demonstration if HF dataset is not set up
-    # In a real scenario, data_loader.load_emails_from_hf_dataset() would be used
-    mock_email = Email(
-        raw_content="Subject: Urgent action required! Your account is suspended.\nFrom: no-reply@fakebank.com\nTo: user@example.com\n\nPlease click here: http://192.168.1.1/login",
-        headers={"From": "no-reply@fakebank.com", "To": "user@example.com", "Subject": "Urgent action required!"},
-        sender="no-reply@fakebank.com",
-        recipients=["user@example.com"],
-        subject="Urgent action required! Your account is suspended.",
-        body="Please click here to verify your account: http://192.168.1.1/login"
-    )
-    emails_to_process = [mock_email] # Or data_loader.load_emails_from_hf_dataset()
+    # 1. Load Emails
+    print("\n1. Loading emails from Hugging Face dataset...")
+    emails_to_process = data_loader.load_emails_from_hf_dataset()
+    if not emails_to_process:
+        print("No emails loaded from dataset. Exiting.")
+        await incident_db.disconnect()
+        return
 
     for email in emails_to_process:
         print(f"\nProcessing Email ID: {email.id}, Subject: {email.subject[:50]}...")
@@ -91,6 +88,11 @@ async def run_phishing_detection_workflow():
                 report = report_generator.generate_incident_report(final_incident, explanation)
                 print(f"\n--- Incident Report for {final_incident.id} ---")
                 print(report)
+
+                # Generate PDF Report
+                pdf_output_path = f"reports/incident_report_{final_incident.id}.pdf"
+                report_generator.generate_incident_report_pdf(final_incident, explanation, pdf_output_path)
+                print(f"   PDF report saved to: {pdf_output_path}")
             else:
                 print(f"   Failed to create incident for email {email.id}")
         else:

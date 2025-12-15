@@ -4,6 +4,10 @@ from pymongo.errors import ConnectionFailure
 import logging
 from typing import Optional, List, Dict, Any
 from pydantic import ValidationError
+from pymongo.mongo_client import MongoClient
+from pymongo.collection import Collection
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+
 
 from .models import Incident, IncidentStatus # Assuming Incident model is in .models
 
@@ -25,7 +29,8 @@ class IncidentDatabase:
 
     async def connect(self):
         try:
-            self.client = AsyncIOMotorClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+            # Set uuid_representation to STANDARD to handle UUIDs correctly
+            self.client = AsyncIOMotorClient(MONGO_URI, serverSelectionTimeoutMS=5000, uuidrepresentation='standard')
             await self.client.admin.command('ismaster')  # The ping command to check connection
             self.db = self.client[DB_NAME]
             self.collection = self.db[INCIDENT_COLLECTION]
@@ -71,7 +76,7 @@ class IncidentDatabase:
 
     async def update_incident(self, incident_id: str, updates: Dict[str, Any]) -> Optional[Incident]:
         try:
-            result = await self.collection.update_one({"_id": incident_id}, {"$set": updates})
+            result = await self.collection.update_one({"_id": incident_id}, updates)
             if result.modified_count:
                 logger.info(f"Incident {incident_id} updated.")
                 return await self.get_incident(incident_id)

@@ -210,3 +210,6 @@ __marimo__/
 backend/ml/models/*.pkl
 backend/ml/models/*.json
 
+# Temporary quickstart script
+run_quickstart.py
+
