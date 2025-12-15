@@ -21,10 +21,10 @@
 
 **Purpose**: Ensure the project environment is configured and basic dependencies are installed.
 
-- [ ] T001 Install Python 3.11 and create a virtual environment (if not already done).
-- [ ] T002 Install core Python dependencies from `requirements.txt`.
-- [ ] T003 Configure `.env` for MongoDB connection (add `MONGO_URI`, `DB_NAME`).
-- [ ] T004 Verify MongoDB connectivity (e.g., by running a simple connection script in `backend/tests/`).
+- [X] T001 Install Python 3.11 and create a virtual environment (if not already done).
+- [X] T002 Install core Python dependencies from `requirements.txt`.
+- [X] T003 Configure `.env` for MongoDB connection (add `MONGO_URI`, `DB_NAME`).
+- [X] T004 Verify MongoDB connectivity (e.g., by running a simple connection script in `backend/tests/`).
 
 ---
 
@@ -34,9 +34,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 [P] Define Pydantic models for `Email` and `Incident` in `backend/src/services/phishing_detection/models.py`.
-- [ ] T006 Implement asynchronous MongoDB client and database operations (e.g., `IncidentDatabase` class) in `backend/src/services/phishing_detection/database.py`.
-- [ ] T007 Implement `EmailDataLoader` for loading emails from Hugging Face datasets in `backend/src/services/phishing_detection/data_loader.py`.
+- [X] T005 [P] Define Pydantic models for `Email` and `Incident` in `backend/src/services/phishing_detection/models.py`.
+- [X] T006 Implement asynchronous MongoDB client and database operations (e.g., `IncidentDatabase` class) in `backend/src/services/phishing_detection/database.py`.
+- [X] T007 Implement `EmailDataLoader` for loading emails from Hugging Face datasets in `backend/src/services/phishing_detection/data_loader.py`.
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -50,17 +50,17 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement `DetectionAgent` with rule-based detection logic in `backend/src/services/phishing_detection/detection_agent.py`.
-- [ ] T009 [US1] Implement `IncidentManager` for creating, updating, and retrieving incidents in `backend/src/services/phishing_detection/incident_manager.py`.
-- [ ] T010 [US1] Implement `ExplainabilityAgent` for generating explanations in `backend/src/services/phishing_detection/explainability_agent.py`.
-- [ ] T011 [P] [US1] Create `ResponseAgent` (placeholder) in `backend/src/services/phishing_detection/response_agent.py`.
-- [ ] T012 [US1] Implement `ReportGenerator` for text and PDF reports in `backend/src/services/phishing_detection/report_generator.py`.
-- [ ] T013 [US1] Implement `OrchestratorAgent` to coordinate the workflow (integrating Detection, IncidentManager, Explainability, Response, ReportGenerator) in `backend/src/services/phishing_detection/orchestrator_agent.py`.
-- [ ] T014 [US1] Implement FastAPI application structure and main router in `backend/main.py` (or `backend/api/main.py`).
-- [ ] T015 [US1] Implement API endpoint `POST /api/v1/phishing-detection/process-emails` in `backend/main.py` (or `backend/api/main.py`).
-- [ ] T016 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents/{incident_id}` in `backend/main.py` (or `backend/api/main.py`).
-- [ ] T017 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents` in `backend/main.py` (or `backend/api/main.py`).
-- [ ] T018 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents/{incident_id}/report/pdf` in `backend/main.py` (or `backend/api/main.py`).
+- [X] T008 [US1] Implement `DetectionAgent` with rule-based detection logic in `backend/src/services/phishing_detection/detection_agent.py`.
+- [X] T009 [US1] Implement `IncidentManager` for creating, updating, and retrieving incidents in `backend/src/services/phishing_detection/incident_manager.py`.
+- [X] T010 [US1] Implement `ExplainabilityAgent` for generating explanations in `backend/src/services/phishing_detection/explainability_agent.py`.
+- [X] T011 [P] [US1] Create `ResponseAgent` (placeholder) in `backend/src/services/phishing_detection/response_agent.py`.
+- [X] T012 [US1] Implement `ReportGenerator` for text and PDF reports in `backend/src/services/phishing_detection/report_generator.py`.
+- [X] T013 [US1] Implement `OrchestratorAgent` to coordinate the workflow (integrating Detection, IncidentManager, Explainability, Response, ReportGenerator) in `backend/src/services/phishing_detection/orchestrator_agent.py`.
+- [X] T014 [US1] Implement FastAPI application structure and main router in `backend/main.py` (or `backend/api/main.py`).
+- [X] T015 [US1] Implement API endpoint `POST /api/v1/phishing-detection/process-emails` in `backend/main.py` (or `backend/api/main.py`).
+- [X] T016 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents/{incident_id}` in `backend/main.py` (or `backend/api/main.py`).
+- [X] T017 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents` in `backend/main.py` (or `backend/api/main.py`).
+- [X] T018 [US1] Implement API endpoint `GET /api/v1/phishing-detection/incidents/{incident_id}/report/pdf` in `backend/main.py` (or `backend/api/main.py`).
 - [ ] T019 [US1] **Integration Test**: Ensure `run_quickstart.py` successfully executes the end-to-end workflow and generates reports.
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
