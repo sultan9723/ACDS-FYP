@@ -120,6 +120,32 @@ export const DashboardProvider = ({ children }) => {
       setThreats(threatsData || []);
       setAllEmails(allEmailsData || []);
 
+      // Populate liveThreats from actual threats for ThreatResponseFeed
+      if (threatsData && threatsData.length > 0) {
+        const threatsFeed = threatsData.slice(0, 20).map((t) => ({
+          id: t.id,
+          severity: t.severity || "MEDIUM",
+          confidence: t.confidence || 0,
+          sender: t.source || t.sender || "Unknown",
+          subject: t.description || t.subject || "Suspicious email",
+          detected_at: t.detected_at || t.timestamp || new Date().toISOString(),
+        }));
+        setLiveThreats(threatsFeed);
+        
+        // Generate response actions for resolved threats
+        const resolvedActions = threatsData
+          .filter((t) => t.status === "Resolved" || t.status === "resolved")
+          .slice(0, 10)
+          .map((t) => ({
+            threat_id: t.id,
+            action: "quarantine_email",
+            actions: ["quarantine_email", "block_sender"],
+            timestamp: t.detected_at || new Date().toISOString(),
+            status: "completed",
+          }));
+        setResponseActions(resolvedActions);
+      }
+
       // Fetch first incident details if threats exist
       if (threatsData && threatsData.length > 0) {
         try {
@@ -159,12 +185,12 @@ export const DashboardProvider = ({ children }) => {
     init();
   }, [loadData]);
 
-  // Auto-refresh data every 30 seconds when demo is running
+  // Auto-refresh data every 10 seconds when demo is running (faster refresh for real-time updates)
   useEffect(() => {
     if (demoRunning) {
       pollingRef.current = setInterval(async () => {
         await loadData();
-      }, 30000);
+      }, 10000); // Reduced to 10 seconds for better real-time updates
     } else if (pollingRef.current) {
       clearInterval(pollingRef.current);
     }
@@ -183,6 +209,16 @@ export const DashboardProvider = ({ children }) => {
     setLoading(false);
   }, [loadData]);
 
+  // Refresh activity logs
+  const refreshActivityLogs = useCallback(async () => {
+    try {
+      const data = await fetchActivityLogs(50);
+      setActivityLogs(data?.logs || []);
+    } catch (error) {
+      console.error("Failed to refresh activity logs:", error);
+    }
+  }, []);
+
   // Start demo mode
   const startDemo = useCallback(
     async (intervalSeconds = 300) => {
@@ -190,6 +226,14 @@ export const DashboardProvider = ({ children }) => {
         const result = await startDemoMode(intervalSeconds);
         if (result.success) {
           setDemoRunning(true);
+          // Log demo start activity
+          const demoStartLog = {
+            event: "demo_started",
+            action_type: "demo_started",
+            message: `Demo mode started - processing every ${intervalSeconds} seconds`,
+            timestamp: new Date().toISOString()
+          };
+          setActivityLogs((prev) => [demoStartLog, ...prev].slice(0, 50));
           await loadData();
         }
         return result;
@@ -207,6 +251,14 @@ export const DashboardProvider = ({ children }) => {
       const result = await stopDemoMode();
       if (result.success) {
         setDemoRunning(false);
+        // Log demo stop activity
+        const demoStopLog = {
+          event: "demo_stopped",
+          action_type: "demo_stopped",
+          message: "Demo mode stopped",
+          timestamp: new Date().toISOString()
+        };
+        setActivityLogs((prev) => [demoStopLog, ...prev].slice(0, 50));
       }
       return result;
     } catch (error) {
@@ -221,20 +273,40 @@ export const DashboardProvider = ({ children }) => {
       try {
         const result = await runDemoBatch(count);
         if (result.success) {
+          // Refresh all data including activity logs
           await loadData();
+          
+          // Also explicitly refresh activity logs for immediate update
+          await refreshActivityLogs();
 
+          // Parse results to populate live threats and response actions
           if (result.results) {
             const newThreats = result.results
-              .filter((r) => r.is_phishing)
+              .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
               .map((r, i) => ({
-                id: r.threat_id || `demo-${Date.now()}-${i}`,
-                severity: r.severity || "MEDIUM",
-                confidence: r.confidence,
-                sender: "demo@test.com",
-                subject: "Demo email",
-                detected_at: new Date().toISOString(),
+                id: r.threat_id || r.incident_id || `demo-${Date.now()}-${i}`,
+                severity: r.severity || r.pipeline_results?.detection?.severity || "MEDIUM",
+                confidence: r.confidence || r.pipeline_results?.detection?.confidence || 0,
+                sender: r.sender || "Unknown",
+                subject: r.subject || "Demo email",
+                detected_at: r.timestamp || new Date().toISOString(),
               }));
             setLiveThreats((prev) => [...newThreats, ...prev].slice(0, 20));
+            
+            // Extract response actions from results
+            const newActions = result.results
+              .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
+              .map((r) => {
+                const responseData = r.pipeline_results?.response || {};
+                return {
+                  threat_id: r.threat_id || r.incident_id,
+                  action: responseData.actions_executed?.[0] || "quarantine_email",
+                  actions: r.actions_taken || ["quarantine_email", "block_sender"],
+                  timestamp: r.timestamp || new Date().toISOString(),
+                  status: "completed"
+                };
+              });
+            setResponseActions((prev) => [...newActions, ...prev].slice(0, 20));
           }
         }
         return result;
@@ -243,18 +315,8 @@ export const DashboardProvider = ({ children }) => {
         throw error;
       }
     },
-    [loadData]
+    [loadData, refreshActivityLogs]
   );
-
-  // Refresh activity logs
-  const refreshActivityLogs = useCallback(async () => {
-    try {
-      const data = await fetchActivityLogs(50);
-      setActivityLogs(data?.logs || []);
-    } catch (error) {
-      console.error("Failed to refresh activity logs:", error);
-    }
-  }, []);
 
   // Run automated test
   const runLiveTest = useCallback(async (count = 10) => {

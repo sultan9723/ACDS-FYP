@@ -199,6 +199,76 @@ async def list_threats(
     }
 
 
+@router.get("/scans/list")
+async def list_scanned_emails(
+    limit: int = Query(50, le=200),
+    is_phishing: Optional[bool] = None
+):
+    """
+    List all scanned emails from the database.
+    
+    Returns paginated list of email scans with their results.
+    Used by the Email Phishing page to show scan history.
+    """
+    # Try database first
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("email_scans")
+            if collection is not None:
+                query = {}
+                if is_phishing is not None:
+                    query["is_phishing"] = is_phishing
+                
+                cursor = collection.find(query).sort("scanned_at", -1).limit(limit)
+                emails = []
+                for scan in cursor:
+                    emails.append({
+                        "id": scan.get("scan_id", str(scan.get("_id"))),
+                        "sender": scan.get("email_sender", "Unknown"),
+                        "subject": scan.get("email_subject", "No subject"),
+                        "content": scan.get("email_content", "")[:200],
+                        "prediction": "Phishing" if scan.get("is_phishing") else "Safe",
+                        "confidence": round(scan.get("confidence", 0) * 100 if scan.get("confidence", 0) <= 1 else scan.get("confidence", 0), 1),
+                        "severity": scan.get("risk_level", "LOW"),
+                        "features": scan.get("indicators", {}),
+                        "scanned_at": scan.get("scanned_at").isoformat() if scan.get("scanned_at") else datetime.now(timezone.utc).isoformat(),
+                        "data_source": scan.get("data_source", "manual")
+                    })
+                
+                total = collection.count_documents(query)
+                return {
+                    "success": True,
+                    "emails": emails,
+                    "total": total,
+                    "data_source": "database"
+                }
+        except Exception as e:
+            print(f"Database error fetching scans: {e}")
+    
+    # Fallback to mock data
+    mock_emails = []
+    for i in range(min(limit, 10)):
+        is_phish = random.random() > 0.6
+        mock_emails.append({
+            "id": f"SCAN-{10000 + i}",
+            "sender": f"user{i}@{'suspicious.com' if is_phish else 'company.com'}",
+            "subject": f"{'Urgent: Verify Account' if is_phish else 'Meeting Notes'} #{i}",
+            "prediction": "Phishing" if is_phish else "Safe",
+            "confidence": round(random.uniform(75, 99) if is_phish else random.uniform(10, 40), 1),
+            "severity": random.choice(["HIGH", "MEDIUM"]) if is_phish else "LOW",
+            "features": {"links": 2, "urgency_score": 0.8} if is_phish else {"links": 0, "urgency_score": 0.1},
+            "scanned_at": (datetime.now(timezone.utc) - timedelta(hours=random.randint(0, 72))).isoformat(),
+            "data_source": "mock"
+        })
+    
+    return {
+        "success": True,
+        "emails": mock_emails,
+        "total": len(mock_emails),
+        "data_source": "mock"
+    }
+
+
 @router.get("/{threat_id}")
 async def get_threat_details(threat_id: str):
     """

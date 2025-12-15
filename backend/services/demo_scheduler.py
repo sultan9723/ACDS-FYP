@@ -4,6 +4,8 @@ Demo Scheduler Service
 Automatically processes sample emails every 5 minutes for demonstration purposes.
 This service simulates real-world email scanning by feeding sample data through
 the detection pipeline.
+
+Now enhanced to fetch real emails from HuggingFace dataset!
 """
 
 import asyncio
@@ -14,7 +16,89 @@ from typing import Optional, List, Dict, Any
 import threading
 import json
 
-# Sample phishing and legitimate email templates for demo
+# Lazy load HuggingFace datasets to avoid startup issues
+HF_AVAILABLE = False
+load_dataset = None
+
+def _lazy_load_hf():
+    """Lazy load the HuggingFace datasets library."""
+    global HF_AVAILABLE, load_dataset
+    if load_dataset is not None:
+        return HF_AVAILABLE
+    
+    try:
+        from datasets import load_dataset as _load_dataset
+        load_dataset = _load_dataset
+        HF_AVAILABLE = True
+        print("✅ HuggingFace datasets library loaded")
+    except ImportError:
+        HF_AVAILABLE = False
+        print("⚠️ HuggingFace datasets not available. Using sample emails only.")
+    
+    return HF_AVAILABLE
+
+# Cache for HuggingFace dataset
+_hf_dataset_cache = None
+_hf_phishing_emails = []
+_hf_legitimate_emails = []
+
+
+def load_hf_dataset():
+    """Load and cache the HuggingFace phishing email dataset."""
+    global _hf_dataset_cache, _hf_phishing_emails, _hf_legitimate_emails
+    
+    # Lazy load the HF library
+    if not _lazy_load_hf():
+        return False
+    
+    if _hf_dataset_cache is not None:
+        return True
+    
+    try:
+        print("📥 Loading HuggingFace phishing email dataset...")
+        _hf_dataset_cache = load_dataset("zefang-liu/phishing-email-dataset", split="train")
+        
+        # Separate phishing and legitimate emails
+        for item in _hf_dataset_cache:
+            email_text = item.get("Email Text", "")
+            email_type = item.get("Email Type", "").lower()
+            
+            if not email_text or len(email_text) < 50:
+                continue
+            
+            # Extract subject and sender from email text if possible
+            lines = email_text.split('\n')
+            subject = "No Subject"
+            sender = "unknown@email.com"
+            content = email_text
+            
+            for line in lines[:10]:
+                if line.lower().startswith("subject:"):
+                    subject = line[8:].strip()[:100]
+                elif line.lower().startswith("from:"):
+                    sender = line[5:].strip()[:100]
+            
+            email_data = {
+                "subject": subject,
+                "sender": sender,
+                "content": email_text[:2000],  # Limit content length
+                "original_label": email_type
+            }
+            
+            if "phishing" in email_type or "spam" in email_type:
+                _hf_phishing_emails.append(email_data)
+            else:
+                _hf_legitimate_emails.append(email_data)
+        
+        print(f"✅ Loaded {len(_hf_phishing_emails)} phishing and {len(_hf_legitimate_emails)} legitimate emails from HuggingFace")
+        return True
+        
+    except Exception as e:
+        print(f"⚠️ Failed to load HuggingFace dataset: {e}")
+        return False
+
+
+# Sample phishing and legitimate email templates for demo (fallback)
 SAMPLE_EMAILS = {
     "phishing": [
         {
@@ -101,6 +185,7 @@ class DemoScheduler:
     """
     Scheduler that automatically processes sample emails for demonstration.
     Runs every 5 minutes to simulate real-world email scanning.
+    Now supports fetching real emails from HuggingFace dataset!
     """
     
     def __init__(self):
@@ -113,12 +198,45 @@ class DemoScheduler:
             "legitimate_detected": 0,
             "last_run": None,
             "next_run": None,
-            "sessions": []
+            "sessions": [],
+            "data_source": "sample"  # "sample" or "huggingface"
         }
+        self._use_hf_dataset = False
+        self._initialize_dataset()
+        
+    def _initialize_dataset(self):
+        """Try to load HuggingFace dataset on initialization."""
+        if load_hf_dataset():
+            self._use_hf_dataset = True
+            self._stats["data_source"] = "huggingface"
+            print("✅ DemoScheduler initialized with HuggingFace dataset")
+        else:
+            self._use_hf_dataset = False
+            self._stats["data_source"] = "sample"
+            print("⚠️ DemoScheduler using sample emails (HuggingFace unavailable)")
         
     @property
     def stats(self):
         return self._stats
+    
+    def _get_email_from_dataset(self, email_type: str) -> dict:
+        """
+        Get a random email from HuggingFace dataset or sample emails.
+        
+        Args:
+            email_type: "phishing" or "legitimate"
+            
+        Returns:
+            Email dict with subject, sender, content
+        """
+        if self._use_hf_dataset:
+            if email_type == "phishing" and _hf_phishing_emails:
+                return random.choice(_hf_phishing_emails).copy()
+            elif email_type == "legitimate" and _hf_legitimate_emails:
+                return random.choice(_hf_legitimate_emails).copy()
+        
+        # Fallback to sample emails
+        return random.choice(SAMPLE_EMAILS.get(email_type, SAMPLE_EMAILS["legitimate"])).copy()
     
     async def start(self):
         """Start the demo scheduler."""
@@ -127,7 +245,11 @@ class DemoScheduler:
         
         self.running = True
         self._task = asyncio.create_task(self._run_loop())
-        return {"status": "started", "message": f"Demo scheduler started. Will process emails every {self.interval_seconds} seconds"}
+        return {
+            "status": "started", 
+            "message": f"Demo scheduler started. Will process emails every {self.interval_seconds} seconds",
+            "data_source": self._stats["data_source"]
+        }
     
     async def stop(self):
         """Stop the demo scheduler."""
@@ -156,27 +278,28 @@ class DemoScheduler:
                 await asyncio.sleep(60)  # Wait a minute before retrying
     
     async def process_batch(self, count: int = 5):
-        """Process a batch of sample emails."""
+        """Process a batch of sample emails from HuggingFace dataset or fallback samples."""
         from database.connection import get_collection
         
         results = []
         session_id = f"DEMO-{uuid.uuid4().hex[:8].upper()}"
         
         # Mix of phishing and legitimate emails (70% phishing, 30% legitimate for demo)
-        phishing_count = int(count * 0.7)
+        phishing_count = max(1, int(count * 0.7))
         legitimate_count = count - phishing_count
         
         emails_to_process = []
         
-        # Select random phishing emails
+        # Get emails from HuggingFace dataset or sample emails
         for _ in range(phishing_count):
-            email = random.choice(SAMPLE_EMAILS["phishing"])
-            emails_to_process.append({**email, "expected": "phishing"})
+            email = self._get_email_from_dataset("phishing")
+            email["expected"] = "phishing"
+            emails_to_process.append(email)
         
-        # Select random legitimate emails
         for _ in range(legitimate_count):
-            email = random.choice(SAMPLE_EMAILS["legitimate"])
-            emails_to_process.append({**email, "expected": "legitimate"})
+            email = self._get_email_from_dataset("legitimate")
+            email["expected"] = "legitimate"
+            emails_to_process.append(email)
         
         # Shuffle the emails
         random.shuffle(emails_to_process)
@@ -197,6 +320,7 @@ class DemoScheduler:
                 "confidence": result.get("confidence", 0),
                 "severity": result.get("severity", "LOW"),
                 "expected": email_data.get("expected", "unknown"),
+                "data_source": self._stats.get("data_source", "sample"),
                 "timestamp": datetime.now(timezone.utc)
             })
             
@@ -334,28 +458,35 @@ Subject: {email_data.get("subject", "No Subject")}
                 # Remove _id to let MongoDB generate it
                 if "_id" in log_data:
                     del log_data["_id"]
+                # Ensure timestamp is set and is a datetime object
+                if "timestamp" not in log_data or not isinstance(log_data.get("timestamp"), datetime):
+                    log_data["timestamp"] = datetime.now(timezone.utc)
                 log_data["created_at"] = datetime.now(timezone.utc)
                 logs_col.insert_one(log_data)
-                print(f"✅ Activity logged: {log_data.get('event', 'unknown')}")
+                print(f"✅ Activity logged: {log_data.get('event', 'unknown')} - {log_data.get('email_subject', log_data.get('session_id', ''))}")
         except Exception as e:
             print(f"Failed to log activity: {e}")
             import traceback
             traceback.print_exc()
     
     async def _store_threat(self, email_data: dict, result: dict, session_id: str):
-        """Store detected threat in MongoDB threats collection."""
+        """Store detected threat in MongoDB threats collection and generate incident report."""
         try:
             from database.connection import get_collection
             
             threats_col = get_collection("threats")
             if threats_col is not None:
                 confidence = result.get("pipeline_results", {}).get("detection", {}).get("confidence", 0)
+                threat_id = result.get("incident_id", f"THR-{uuid.uuid4().hex[:8].upper()}")
+                severity = result.get("severity", "MEDIUM")
+                actions_taken = result.get("actions_taken", ["quarantine_email", "block_sender"])
+                
                 threat_doc = {
-                    "threat_id": result.get("incident_id", f"THR-{uuid.uuid4().hex[:8].upper()}"),
+                    "threat_id": threat_id,
                     "session_id": session_id,
                     "threat_type": "Phishing",  # Match expected field name
                     "type": "Phishing",
-                    "severity": result.get("severity", "MEDIUM"),
+                    "severity": severity,
                     "status": "resolved",  # Auto-resolved by system
                     "confidence": round(confidence * 100, 1) if confidence <= 1 else confidence,  # Convert to percentage
                     "risk_score": result.get("risk_score", 0),
@@ -364,14 +495,53 @@ Subject: {email_data.get("subject", "No Subject")}
                     "sender": email_data.get("sender", "Unknown"),
                     "detected_at": datetime.now(timezone.utc),
                     "resolved_at": datetime.now(timezone.utc),
-                    "actions_taken": result.get("actions_taken", ["quarantine_email", "block_sender"]),
+                    "actions_taken": actions_taken,
                     "description": f"Phishing email detected from {email_data.get('sender', 'Unknown')}",
                     "email_preview": email_data.get("content", "")[:200]
                 }
                 threats_col.insert_one(threat_doc)
                 print(f"✅ Threat stored in MongoDB: {threat_doc['threat_id']} - Severity: {threat_doc['severity']} - Confidence: {threat_doc['confidence']}%")
+                
+                # Generate PDF incident report for this threat
+                await self._generate_incident_report(threat_doc, result)
+                
         except Exception as e:
             print(f"Failed to store threat: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    async def _generate_incident_report(self, threat_doc: dict, pipeline_results: dict):
+        """Generate a PDF incident report for the detected threat."""
+        try:
+            from services.incident_report_generator import get_incident_report_generator
+            
+            report_generator = get_incident_report_generator()
+            
+            # Prepare threat data for report generation
+            threat_data = {
+                "threat_id": threat_doc.get("threat_id"),
+                "severity": threat_doc.get("severity", "MEDIUM"),
+                "confidence": threat_doc.get("confidence", 0),
+                "email_subject": threat_doc.get("email_subject", "No Subject"),
+                "email_sender": threat_doc.get("email_sender", "Unknown"),
+                "email_preview": threat_doc.get("email_preview", ""),
+                "status": threat_doc.get("status", "resolved"),
+                "actions_taken": threat_doc.get("actions_taken", [])
+            }
+            
+            # Generate the PDF report
+            report = report_generator.generate_incident_report(
+                threat_data=threat_data,
+                pipeline_results=pipeline_results.get("pipeline_results", {})
+            )
+            
+            if report:
+                print(f"📄 Incident report generated: {report.filename}")
+            else:
+                print(f"⚠️ Failed to generate incident report for threat {threat_doc.get('threat_id')}")
+                
+        except Exception as e:
+            print(f"Failed to generate incident report: {e}")
             import traceback
             traceback.print_exc()
     
@@ -383,20 +553,27 @@ Subject: {email_data.get("subject", "No Subject")}
             scans_col = get_collection("email_scans")
             if scans_col is not None:
                 is_phishing = result.get("pipeline_results", {}).get("detection", {}).get("is_phishing", False)
+                confidence_raw = result.get("pipeline_results", {}).get("detection", {}).get("confidence", 0)
+                # Convert to percentage if needed (0-1 -> 0-100)
+                confidence = round(confidence_raw * 100, 1) if confidence_raw <= 1 else round(confidence_raw, 1)
+                
                 scan_doc = {
                     "scan_id": f"SCAN-{uuid.uuid4().hex[:8].upper()}",
                     "email_id": result.get("email_id", f"email_{uuid.uuid4().hex[:8]}"),
                     "session_id": session_id,
-                    "subject": email_data.get("subject", "No Subject"),
-                    "sender": email_data.get("sender", "Unknown"),
+                    "email_subject": email_data.get("subject", "No Subject"),
+                    "email_sender": email_data.get("sender", "Unknown"),
+                    "email_content": email_data.get("content", "")[:500],  # Store limited content
                     "is_phishing": is_phishing,
-                    "confidence": result.get("pipeline_results", {}).get("detection", {}).get("confidence", 0),
-                    "severity": result.get("severity", "LOW") if is_phishing else "SAFE",
+                    "confidence": confidence,
+                    "risk_level": result.get("severity", "LOW") if is_phishing else "SAFE",
+                    "indicators": result.get("pipeline_results", {}).get("explainability", {}).get("iocs", {}),
+                    "data_source": "huggingface" if "_hf" in email_data.get("source", "") else "demo",
                     "scanned_at": datetime.now(timezone.utc),
                     "processing_time_ms": result.get("processing_time_ms", 0)
                 }
                 scans_col.insert_one(scan_doc)
-                print(f"✅ Email scan stored: {scan_doc['scan_id']} - {'PHISHING' if is_phishing else 'SAFE'}")
+                print(f"✅ Email scan stored: {scan_doc['scan_id']} - {'PHISHING' if is_phishing else 'SAFE'} - Confidence: {confidence}%")
         except Exception as e:
             print(f"Failed to store email scan: {e}")
             import traceback

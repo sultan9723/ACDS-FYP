@@ -361,9 +361,16 @@ export const fetchAllEmails = async () => {
     });
   }
   try {
-    const response = await api.get("/threats/list");
-    return response.data.threats || emailDetails;
+    // First try to get scanned emails from database
+    const response = await api.get("/threats/scans/list", { params: { limit: 100 } });
+    if (response.data.success && response.data.emails?.length > 0) {
+      return response.data.emails;
+    }
+    // Fallback to threats list
+    const threatsResponse = await api.get("/threats/list");
+    return threatsResponse.data.threats || emailDetails;
   } catch (error) {
+    console.error("Error fetching emails:", error);
     return emailDetails;
   }
 };

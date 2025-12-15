@@ -245,7 +245,7 @@ const Landing = () => {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               Protect Your Organization from{" "}
               <span className="bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-400 bg-clip-text text-transparent">
-                Phishing Attacks
+                Digital Attacks
               </span>
             </h1>
 

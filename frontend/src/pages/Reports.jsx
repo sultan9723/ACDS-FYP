@@ -15,7 +15,12 @@ import {
   TrendingUp,
   Target,
   Activity,
+  File,
+  Eye,
+  Trash2,
 } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const Reports = () => {
   const dashboardData = useDashboard() || {};
@@ -28,13 +33,92 @@ const Reports = () => {
     useState("threat-summary");
   const [dateRange, setDateRange] = useState("7days");
   const [generatedReport, setGeneratedReport] = useState(null);
+  
+  // PDF Incident Reports State
+  const [incidentReports, setIncidentReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [activeTab, setActiveTab] = useState("ai-report"); // "ai-report" or "incident-reports"
 
   // Refresh data on mount to get latest threats
   useEffect(() => {
     if (refreshData) {
       refreshData();
     }
+    // Also fetch incident reports
+    fetchIncidentReports();
   }, []);
+
+  // Fetch PDF incident reports from backend
+  const fetchIncidentReports = async () => {
+    setLoadingReports(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/incidents?limit=50`);
+      const data = await response.json();
+      if (data.success) {
+        setIncidentReports(data.reports || []);
+      }
+    } catch (error) {
+      console.error("Error fetching incident reports:", error);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  // Download PDF incident report
+  const downloadPDFReport = async (reportId, filename) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/incidents/${reportId}/download`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || `incident_report_${reportId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error("Failed to download report");
+      }
+    } catch (error) {
+      console.error("Error downloading report:", error);
+    }
+  };
+
+  // Delete incident report
+  const deleteReport = async (reportId) => {
+    if (!window.confirm("Are you sure you want to delete this report?")) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/reports/incidents/${reportId}`, {
+        method: "DELETE"
+      });
+      if (response.ok) {
+        setIncidentReports(prev => prev.filter(r => r.report_id !== reportId));
+      }
+    } catch (error) {
+      console.error("Error deleting report:", error);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "Unknown";
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  // Get severity color
+  const getSeverityColor = (severity) => {
+    switch (severity?.toUpperCase()) {
+      case "CRITICAL": return "text-red-500 bg-red-500/20";
+      case "HIGH": return "text-orange-500 bg-orange-500/20";
+      case "MEDIUM": return "text-yellow-500 bg-yellow-500/20";
+      case "LOW": return "text-green-500 bg-green-500/20";
+      default: return "text-gray-400 bg-gray-500/20";
+    }
+  };
 
   const reportTypes = [
     {
@@ -304,12 +388,52 @@ ${generatedReport.threatBreakdown
             AI-Powered Reports
           </h1>
           <p className="text-gray-400 mt-1">
-            Generate comprehensive threat analysis reports using AI
+            Generate comprehensive threat analysis reports and view incident reports
           </p>
         </div>
+        <button
+          onClick={fetchIncidentReports}
+          className="flex items-center gap-2 px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-gray-300 hover:border-cyan-500 transition-colors"
+        >
+          <RefreshCw className={`w-4 h-4 ${loadingReports ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      {/* Report Configuration */}
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-gray-800 pb-2">
+        <button
+          onClick={() => setActiveTab("ai-report")}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            activeTab === "ai-report"
+              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+              : "text-gray-400 hover:text-white hover:bg-gray-800"
+          }`}
+        >
+          <Sparkles className="w-4 h-4 inline mr-2" />
+          Generate AI Report
+        </button>
+        <button
+          onClick={() => setActiveTab("incident-reports")}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            activeTab === "incident-reports"
+              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+              : "text-gray-400 hover:text-white hover:bg-gray-800"
+          }`}
+        >
+          <File className="w-4 h-4" />
+          PDF Incident Reports
+          {incidentReports.length > 0 && (
+            <span className="px-2 py-0.5 bg-cyan-500 text-white text-xs rounded-full">
+              {incidentReports.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* AI Report Generation Tab */}
+      {activeTab === "ai-report" && (
+        <>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Report Type Selection */}
         <div className="lg:col-span-2 bg-[#111111] border border-gray-800 rounded-xl p-6">
@@ -530,7 +654,7 @@ ${generatedReport.threatBreakdown
       )}
 
       {/* Empty State */}
-      {!generatedReport && !isGenerating && (
+      {!generatedReport && !isGenerating && activeTab === "ai-report" && (
         <div className="bg-[#111111] border border-gray-800 rounded-xl p-12 text-center">
           <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-white mb-2">
@@ -540,6 +664,131 @@ ${generatedReport.threatBreakdown
             Select a report type and click "Generate AI Report" to create a
             comprehensive threat analysis.
           </p>
+        </div>
+      )}
+      </>
+      )}
+
+      {/* PDF Incident Reports Tab */}
+      {activeTab === "incident-reports" && (
+        <div className="space-y-6">
+          {/* Stats Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-4">
+              <p className="text-sm text-gray-400">Total Reports</p>
+              <p className="text-2xl font-bold text-white">{incidentReports.length}</p>
+            </div>
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-4">
+              <p className="text-sm text-gray-400">Critical Severity</p>
+              <p className="text-2xl font-bold text-red-400">
+                {incidentReports.filter(r => r.severity?.toUpperCase() === "CRITICAL").length}
+              </p>
+            </div>
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-4">
+              <p className="text-sm text-gray-400">High Severity</p>
+              <p className="text-2xl font-bold text-orange-400">
+                {incidentReports.filter(r => r.severity?.toUpperCase() === "HIGH").length}
+              </p>
+            </div>
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-4">
+              <p className="text-sm text-gray-400">Average Confidence</p>
+              <p className="text-2xl font-bold text-cyan-400">
+                {incidentReports.length > 0 
+                  ? (incidentReports.reduce((acc, r) => acc + (r.confidence || 0), 0) / incidentReports.length).toFixed(1)
+                  : 0}%
+              </p>
+            </div>
+          </div>
+
+          {/* Reports List */}
+          {loadingReports ? (
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-12 text-center">
+              <RefreshCw className="w-8 h-8 text-cyan-400 mx-auto mb-4 animate-spin" />
+              <p className="text-gray-400">Loading incident reports...</p>
+            </div>
+          ) : incidentReports.length === 0 ? (
+            <div className="bg-[#111111] border border-gray-800 rounded-xl p-12 text-center">
+              <File className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No Incident Reports Yet</h3>
+              <p className="text-gray-400 mb-4">
+                PDF incident reports are automatically generated when the system detects phishing threats.
+              </p>
+              <p className="text-sm text-gray-500">
+                Run the Demo Scheduler to detect threats and generate reports.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-[#111111] border border-gray-800 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-800">
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <File className="w-5 h-5 text-cyan-400" />
+                  Generated Incident Reports ({incidentReports.length})
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#0a0a0a]">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Report ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Threat ID</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Severity</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Confidence</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Email Subject</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Generated At</th>
+                      <th className="px-4 py-3 text-left text-sm font-medium text-gray-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800">
+                    {incidentReports.map((report) => (
+                      <tr key={report.report_id} className="hover:bg-[#0a0a0a] transition-colors">
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-sm text-cyan-400">{report.report_id}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-sm text-gray-300">{report.threat_id}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                            {report.severity || "UNKNOWN"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-white">{report.confidence?.toFixed(1)}%</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-gray-300 max-w-xs truncate block" title={report.email_subject}>
+                            {report.email_subject?.substring(0, 40)}
+                            {report.email_subject?.length > 40 ? "..." : ""}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-gray-400 text-sm">{formatDate(report.generated_at)}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => downloadPDFReport(report.report_id, report.filename)}
+                              className="p-2 hover:bg-cyan-500/20 rounded-lg text-cyan-400 transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteReport(report.report_id)}
+                              className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors"
+                              title="Delete Report"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

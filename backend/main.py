@@ -15,18 +15,14 @@ except ImportError:
     pass
 
 import os
+import sys
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.responses import HTMLResponse, Response # Added Response
+from fastapi import FastAPI, HTTPException, status
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import logging
 
-from backend.src.services.phishing_detection.database import get_incident_db, IncidentDatabase
-from backend.src.services.phishing_detection.orchestrator_agent import get_orchestrator_agent
-from backend.src.services.phishing_detection.data_loader import get_email_data_loader
-from backend.src.services.phishing_detection.models import Email, Incident, IncidentStatus # Added IncidentStatus
-from backend.src.services.phishing_detection.report_generator import get_report_generator # Added get_report_generator
-from typing import Dict, Any, Optional # Added for get_all_incidents endpoint response_model
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -34,163 +30,197 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
+# Create FastAPI app
 app = FastAPI(
-    title="ACDS Phishing Detection Module",
-    description="API for automated phishing detection, incident management, and reporting.",
-    version="1.0.0"
+    title="ACDS - Autonomous Cyber Defense System",
+    description="API for automated phishing detection, incident management, and autonomous response.",
+    version="2.0.0"
 )
 
-# Root endpoint
+# CORS middleware for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =============================================================================
+# IMPORT AND INCLUDE API ROUTERS
+# =============================================================================
+
+# Import route modules
+from api.routes import auth, threats, dashboard, feedback, reports, testing, demo
+
+# Include routers with /api/v1 prefix
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(threats.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(feedback.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
+app.include_router(testing.router, prefix="/api/v1")
+app.include_router(demo.router, prefix="/api/v1")
+
+
+# =============================================================================
+# ROOT AND HEALTH ENDPOINTS
+# =============================================================================
+
 @app.get("/", response_class=HTMLResponse, summary="Root endpoint")
 async def read_root():
+    """Root endpoint with system info."""
     return """
     <html>
         <head>
-            <title>ACDS Phishing Detection Module</title>
+            <title>ACDS - Autonomous Cyber Defense System</title>
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+                h1 { color: #0ea5e9; }
+                .status { color: #22c55e; }
+                a { color: #0ea5e9; }
+            </style>
         </head>
         <body>
-            <h1>ACDS Phishing Detection Module API</h1>
-            <p>Visit /docs for API documentation.</p>
+            <h1>🛡️ ACDS - Autonomous Cyber Defense System</h1>
+            <p><span class="status">● System Online</span></p>
+            <p>Multi-Agent Phishing Detection & Response Platform</p>
+            <h2>Quick Links</h2>
+            <ul>
+                <li><a href="/docs">📚 API Documentation (Swagger)</a></li>
+                <li><a href="/redoc">📖 API Documentation (ReDoc)</a></li>
+                <li><a href="/health">💚 Health Check</a></li>
+            </ul>
+            <h2>API Endpoints</h2>
+            <ul>
+                <li><code>/api/v1/threats/</code> - Threat detection endpoints</li>
+                <li><code>/api/v1/dashboard/</code> - Dashboard statistics</li>
+                <li><code>/api/v1/demo/</code> - Demo mode controls</li>
+                <li><code>/api/v1/auth/</code> - Authentication</li>
+                <li><code>/api/v1/feedback/</code> - Feedback loop</li>
+                <li><code>/api/v1/reports/</code> - Report generation</li>
+            </ul>
         </body>
     </html>
     """
 
-# Example of an endpoint for batch processing (internal/testing)
-@app.post("/api/v1/phishing-detection/process-emails", summary="Initiate batch email processing for phishing detection")
-async def process_emails_batch(
-    dataset_name: str = "zefang-liu/phishing-email-dataset",
-    split: str = "train",
-    raw_text_column: str = "Email Text",
-    incident_db: IncidentDatabase = Depends(get_incident_db)
-):
-    logger.info(f"Received request to process emails from dataset: {dataset_name}, split: {split}")
-    
-    data_loader = get_email_data_loader(dataset_name, split, raw_text_column)
-    emails_to_process = data_loader.load_emails_from_hf_dataset()
 
-    if not emails_to_process:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No emails found in the specified dataset."
-        )
-    
-    orchestrator = await get_orchestrator_agent(incident_db)
-    processed_count = 0
-    incidents_created = 0
-
-    for email in emails_to_process:
-        incident = await orchestrator.process_email_workflow(email)
-        processed_count += 1
-        if incident:
-            incidents_created += 1
-            
-    return {
-        "message": f"Successfully processed {processed_count} emails. Created {incidents_created} incidents.",
-        "processed_emails": processed_count,
-        "incidents_created": incidents_created
+@app.get("/health", summary="Health check endpoint")
+async def health_check():
+    """Check system health status."""
+    health_status = {
+        "status": "healthy",
+        "components": {}
     }
-
-@app.get("/api/v1/phishing-detection/incidents/{incident_id}", response_model=Incident, summary="Retrieve a specific phishing incident by ID")
-async def get_incident_by_id(
-    incident_id: str,
-    incident_db: IncidentDatabase = Depends(get_incident_db)
-):
-    incident = await incident_db.get_incident(incident_id)
-    if not incident:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Incident with ID {incident_id} not found."
-        )
-    return incident
-
-@app.get("/api/v1/phishing-detection/incidents", response_model=Dict[str, Any], summary="Retrieve a list of all phishing incidents")
-async def get_all_incidents(
-    status: Optional[IncidentStatus] = None,
-    limit: int = 100,
-    offset: int = 0,
-    incident_db: IncidentDatabase = Depends(get_incident_db)
-):
-    query = {}
-    if status:
-        query["status"] = status.value
-
-    incidents = await incident_db.find_incidents(query, limit, offset)
-    total_count = await incident_db.count_incidents(query)
-
-    return {
-        "total": total_count,
-        "incidents": incidents
-    }
-
-@app.get("/api/v1/phishing-detection/incidents/{incident_id}/report/pdf", summary="Generate and retrieve a PDF report for a specific phishing incident")
-async def get_incident_pdf_report(
-    incident_id: str,
-    incident_db: IncidentDatabase = Depends(get_incident_db)
-):
-    incident = await incident_db.get_incident(incident_id)
-    if not incident:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Incident with ID {incident_id} not found."
-        )
     
-    # In a real scenario, you'd fetch the original email associated with the incident
-    # For now, we'll need to mock or fetch a dummy email for report generation if not stored with incident
-    # For now, just generate a dummy email for the report
-    dummy_email = Email(
-        raw_content="Dummy email content for report generation.",
-        sender="dummy@example.com",
-        recipients=["analyst@example.com"],
-        subject=f"Report for Incident {incident_id}",
-        body="This is a dummy body for the report generation.",
-        attachments=[]
-    )
-
-    report_generator = await get_report_generator(incident_db)
-    
-    # Define a temporary path for the PDF
-    pdf_output_path = f"reports/temp_incident_report_{incident_id}.pdf"
-    
+    # Check ML model
     try:
-        explanation = incident.explanation_details.model_dump() if incident.explanation_details else {}
-        await report_generator.generate_incident_report_pdf(incident, dummy_email, explanation, pdf_output_path)
-        
-        with open(pdf_output_path, "rb") as pdf_file:
-            pdf_content = pdf_file.read()
-        
-        # Clean up the temporary PDF file
-        os.remove(pdf_output_path)
-
-        return Response(content=pdf_content, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=incident_report_{incident_id}.pdf"})
+        from ml.phishing_service import get_phishing_service
+        service = get_phishing_service()
+        if service and service.model:
+            health_status["components"]["ml_model"] = "healthy"
+        else:
+            health_status["components"]["ml_model"] = "not_loaded"
     except Exception as e:
-        logger.error(f"Error generating or serving PDF report for incident {incident_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate PDF report."
-        )
+        health_status["components"]["ml_model"] = f"error: {str(e)}"
+    
+    # Check database
+    try:
+        from database.connection import get_collection
+        test_col = get_collection("health_check")
+        if test_col is not None:
+            health_status["components"]["database"] = "connected"
+        else:
+            health_status["components"]["database"] = "not_configured"
+    except Exception as e:
+        health_status["components"]["database"] = f"error: {str(e)}"
+    
+    # Check orchestrator
+    try:
+        from agents.orchestrator_agent import get_orchestrator_agent
+        orchestrator = get_orchestrator_agent()
+        if orchestrator:
+            health_status["components"]["orchestrator"] = "ready"
+        else:
+            health_status["components"]["orchestrator"] = "not_ready"
+    except Exception as e:
+        health_status["components"]["orchestrator"] = f"error: {str(e)}"
+    
+    return health_status
 
-# Startup event for database connection
+
+# =============================================================================
+# STARTUP AND SHUTDOWN EVENTS
+# =============================================================================
+
 @app.on_event("startup")
-async def startup_db_client():
-    logger.info("Connecting to MongoDB on startup...")
+async def startup_event():
+    """Initialize services on startup."""
+    logger.info("🚀 Starting ACDS Backend...")
+    
+    # Initialize ML model
     try:
-        await get_incident_db() # This will connect the singleton incident_db
-        logger.info("MongoDB connection established successfully.")
+        from ml.phishing_service import get_phishing_service
+        service = get_phishing_service()
+        if service and service.model:
+            logger.info("✅ ML Model loaded successfully")
+        else:
+            logger.warning("⚠️ ML Model not loaded")
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB on startup: {e}")
-        # Optionally, re-raise or handle more gracefully depending on desired behavior
-        # For now, let's allow startup to complete but log error
-        pass
+        logger.error(f"❌ Error loading ML model: {e}")
+    
+    # Initialize database connection
+    try:
+        from database.connection import get_collection
+        test_col = get_collection("startup_test")
+        if test_col is not None:
+            logger.info("✅ Database connection established")
+        else:
+            logger.warning("⚠️ Database not configured")
+    except Exception as e:
+        logger.error(f"❌ Error connecting to database: {e}")
+    
+    # Initialize orchestrator agent
+    try:
+        from agents.orchestrator_agent import get_orchestrator_agent
+        orchestrator = get_orchestrator_agent()
+        if orchestrator:
+            logger.info("✅ Orchestrator Agent initialized")
+        else:
+            logger.warning("⚠️ Orchestrator Agent not initialized")
+    except Exception as e:
+        logger.error(f"❌ Error initializing orchestrator: {e}")
+    
+    logger.info("🛡️ ACDS Backend is ready!")
 
-# Shutdown event for database disconnection
+
 @app.on_event("shutdown")
-async def shutdown_db_client():
-    logger.info("Disconnecting from MongoDB on shutdown...")
-    incident_db = await get_incident_db()
-    await incident_db.disconnect()
-    logger.info("MongoDB connection closed.")
+async def shutdown_event():
+    """Cleanup on shutdown."""
+    logger.info("🛑 Shutting down ACDS Backend...")
+    
+    # Stop demo scheduler if running
+    try:
+        from services.demo_scheduler import get_demo_scheduler
+        scheduler = get_demo_scheduler()
+        if scheduler.running:
+            await scheduler.stop()
+            logger.info("✅ Demo scheduler stopped")
+    except Exception as e:
+        logger.warning(f"⚠️ Error stopping demo scheduler: {e}")
+    
+    logger.info("👋 ACDS Backend shutdown complete")
+
+
+# =============================================================================
+# RUN SERVER
+# =============================================================================
 
 if __name__ == "__main__":
-    # Ensure uvicorn runs the app from the correct module
-    # 'backend.main:app' refers to the 'app' object in 'backend/main.py'
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
