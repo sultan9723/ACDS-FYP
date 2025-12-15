@@ -63,4 +63,4 @@ All changes must preserve ACDS as an investigation-preparation system.
 <!-- This section requires user input to define specific governance rules -->
 [GOVERNANCE_RULES]
 
-**Version**: 0.2.0 | **Ratified**: TODO(RATIFICATION_DATE): User needs to provide the original adoption date. | **Last Amended**: 2025-12-14
+**Version**: 0.2.0 | **Ratified**: TODO(RATIFICATION_DATE): User needs to provide the original adoption date. | **Last Amended**: 2025-12-15
