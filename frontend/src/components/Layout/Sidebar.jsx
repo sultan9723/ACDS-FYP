@@ -4,12 +4,10 @@ import {
   LayoutDashboard,
   ShieldAlert,
   FileText,
-  Settings,
-  Activity,
-  Lock,
   Sparkles,
   LogOut,
   Shield,
+  Bug,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../context/AuthContext";
@@ -19,10 +17,11 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: ShieldAlert, label: "Email Phishing", path: "/dashboard/phishing" },
-    { icon: Sparkles, label: "AI Reports", path: "/dashboard/reports" },
-    { icon: FileText, label: "Logs", path: "/dashboard/logs" },
+    { icon: LayoutDashboard, label: "Dashboard",      path: "/dashboard" },
+    { icon: ShieldAlert,     label: "Email Phishing", path: "/dashboard/phishing" },
+    { icon: Bug,             label: "Ransomware",     path: "/dashboard/ransomware" },
+    { icon: Sparkles,        label: "AI Reports",     path: "/dashboard/reports" },
+    { icon: FileText,        label: "Logs",           path: "/dashboard/logs" },
   ];
 
   const handleLogout = () => {

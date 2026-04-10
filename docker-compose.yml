@@ -21,23 +21,23 @@ services:
     networks:
       - acds-network
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: acds-frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - acds-network
+  #frontend:
+   # build:
+      #context: ./frontend
+      #dockerfile: Dockerfile
+    #container_name: acds-frontend
+    #volumes:
+    #  - ./frontend:/app
+    #  - /app/node_modules
+    #ports:
+    #  - "5173:5173"
+    #environment:
+    #  - VITE_API_URL=http://localhost:8000
+    #depends_on:
+    ##  - backend
+    #restart: unless-stopped
+    #networks:
+    #  - acds-network
 
   mongo:
     image: mongo:7.0
@@ -77,4 +77,4 @@ volumes:
 
 networks:
   acds-network:
-    driver: bridge
+    driver: bridge 

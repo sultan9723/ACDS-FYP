@@ -1,0 +1,634 @@
+"""
+Ransomware Detection API Routes
+=================================
+API endpoints for ransomware command scanning and detection.
+
+Version: 1.0.0 - Orchestrator-based pipeline
+Pipeline: Detection → Explainability → Orchestrator → Response
+"""
+
+import time
+import random
+from typing import Optional, List
+from datetime import datetime, timezone, timedelta
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
+
+# =============================================================================
+# Request / Response Models
+# =============================================================================
+
+class CommandScanRequest(BaseModel):
+    command: str = Field(..., description="Process command or system call to scan")
+    command_id: Optional[str] = Field(None, description="Optional command identifier")
+    source_host: Optional[str] = Field(None, description="Hostname where command originated")
+    process_name: Optional[str] = Field(None, description="Name of the process")
+    user: Optional[str] = Field(None, description="User account that ran the command")
+
+class CommandScanBatchRequest(BaseModel):
+    commands: List[CommandScanRequest]
+
+class QuickScanRequest(BaseModel):
+    command: str = Field(..., min_length=1, description="Command string to analyze")
+
+
+# =============================================================================
+# Import Services — Orchestrator-based architecture
+# =============================================================================
+
+try:
+    from ml.ransomware_service import get_ransomware_service
+    from agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
+    from agents.ransomware_detection_agent import get_ransomware_detection_agent
+    from agents.ransomware_explainability_agent import get_ransomware_explainability_agent
+    from agents.ransomware_response_agent import get_ransomware_response_agent
+except ImportError:
+    try:
+        from backend.ml.ransomware_service import get_ransomware_service
+        from backend.agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
+        from backend.agents.ransomware_detection_agent import get_ransomware_detection_agent
+        from backend.agents.ransomware_explainability_agent import get_ransomware_explainability_agent
+        from backend.agents.ransomware_response_agent import get_ransomware_response_agent
+    except ImportError:
+        get_ransomware_service = None
+        get_ransomware_orchestrator_agent = None
+        get_ransomware_detection_agent = None
+        get_ransomware_explainability_agent = None
+        get_ransomware_response_agent = None
+
+
+router = APIRouter(prefix="/ransomware", tags=["Ransomware Detection"])
+
+
+# =============================================================================
+# Database helpers
+# =============================================================================
+
+try:
+    from database.connection import get_collection
+    USE_DATABASE = True
+except ImportError:
+    USE_DATABASE = False
+    get_collection = None
+
+
+def save_scan_to_database(scan_data: dict) -> Optional[str]:
+    """Save ransomware scan result to database and return scan_id."""
+    if not USE_DATABASE or not get_collection:
+        return None
+    try:
+        collection = get_collection("ransomware_scans")
+        if collection is not None:
+            scan_doc = {
+                "scan_id": f"RSCAN-{random.randint(10000, 99999)}",
+                "command_preview": scan_data.get("command", "")[:500],
+                "source_host": scan_data.get("source_host"),
+                "process_name": scan_data.get("process_name"),
+                "user": scan_data.get("user"),
+                "is_ransomware": scan_data.get("is_ransomware", False),
+                "confidence": scan_data.get("confidence", 0),
+                "risk_level": scan_data.get("severity", "LOW"),
+                "iocs": scan_data.get("iocs", {}),
+                "behavior_categories": scan_data.get("behavior_categories", []),
+                "processing_time_ms": scan_data.get("processing_time_ms", 0),
+                "model_version": "1.0.0",
+                "scanned_at": datetime.now(timezone.utc)
+            }
+            collection.insert_one(scan_doc)
+            return scan_doc["scan_id"]
+    except Exception as e:
+        print(f"Error saving ransomware scan: {e}")
+    return None
+
+
+def save_threat_to_database(threat_data: dict) -> Optional[str]:
+    """Save detected ransomware threat to database and return threat_id."""
+    if not USE_DATABASE or not get_collection:
+        return None
+    try:
+        collection = get_collection("threats")
+        if collection is not None:
+            threat_doc = {
+                "threat_id": f"RAN-{random.randint(1000, 9999)}",
+                "threat_type": "ransomware",
+                "severity": threat_data.get("severity", "HIGH"),
+                "status": "active",
+                "confidence": threat_data.get("confidence", 0),
+                "source_host": threat_data.get("source_host"),
+                "process_name": threat_data.get("process_name"),
+                "user": threat_data.get("user"),
+                "command_preview": threat_data.get("command", "")[:200],
+                "iocs": threat_data.get("iocs", {}),
+                "behavior_categories": threat_data.get("behavior_categories", []),
+                "mitre_tactics": threat_data.get("mitre_tactics", []),
+                "attack_stage": threat_data.get("attack_stage"),
+                "action_taken": threat_data.get("action_taken"),
+                "detected_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(timezone.utc)
+            }
+            collection.insert_one(threat_doc)
+            return threat_doc["threat_id"]
+    except Exception as e:
+        print(f"Error saving ransomware threat: {e}")
+    return None
+
+
+# =============================================================================
+# SCAN ENDPOINTS
+# =============================================================================
+
+@router.post("/scan")
+async def scan_command(request: CommandScanRequest):
+    """
+    Scan a command through the full ransomware orchestrator pipeline.
+
+    Pipeline: Detection -> Explainability -> Response
+
+    Returns comprehensive analysis with:
+    - Detection results (is_ransomware, confidence, risk_score, severity)
+    - Explainability (IOCs, behavior categories, MITRE ATT&CK, explanation)
+    - Response actions (if ransomware detected)
+    - Incident tracking (incident_id for follow-up)
+    """
+    start_time = time.time()
+
+    if not get_ransomware_orchestrator_agent:
+        raise HTTPException(status_code=503, detail="Ransomware orchestrator not available")
+
+    try:
+        orchestrator = get_ransomware_orchestrator_agent()
+        result = orchestrator.process_command(
+            request.command,
+            request.command_id,
+            request.source_host
+        )
+
+        if request.source_host:
+            result['source_host'] = request.source_host
+        if request.process_name:
+            result['process_name'] = request.process_name
+        if request.user:
+            result['user'] = request.user
+
+        processing_time = (time.time() - start_time) * 1000
+        result['processing_time_ms'] = round(processing_time, 2)
+
+        detection = result.get('pipeline_results', {}).get('detection', {})
+        explain = result.get('pipeline_results', {}).get('explainability', {})
+        is_ransomware = detection.get('is_ransomware', False)
+
+        scan_data = {
+            "command": request.command,
+            "source_host": request.source_host,
+            "process_name": request.process_name,
+            "user": request.user,
+            "is_ransomware": is_ransomware,
+            "confidence": detection.get('confidence', 0),
+            "severity": result.get('severity', 'LOW'),
+            "processing_time_ms": result['processing_time_ms'],
+            "iocs": explain.get('iocs', {}),
+            "behavior_categories": explain.get('behavior_categories', [])
+        }
+        scan_id = save_scan_to_database(scan_data)
+        if scan_id:
+            result['scan_id'] = scan_id
+
+        if is_ransomware:
+            threat_data = {
+                "severity": result.get('severity', 'HIGH'),
+                "confidence": detection.get('confidence', 0),
+                "source_host": request.source_host,
+                "process_name": request.process_name,
+                "user": request.user,
+                "command": request.command,
+                "iocs": explain.get('iocs', {}),
+                "behavior_categories": explain.get('behavior_categories', []),
+                "mitre_tactics": explain.get('mitre_tactics', []),
+                "attack_stage": explain.get('attack_stage'),
+                "action_taken": result.get('pipeline_results', {}).get(
+                    'response', {}
+                ).get('actions_executed', [None])[0]
+            }
+            threat_id = save_threat_to_database(threat_data)
+            if threat_id:
+                result['threat_id'] = threat_id
+
+        return {"success": True, "result": result}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scan/batch")
+async def scan_commands_batch(request: CommandScanBatchRequest):
+    """
+    Scan multiple commands in batch through the orchestrator pipeline.
+    """
+    start_time = time.time()
+
+    if not get_ransomware_orchestrator_agent:
+        raise HTTPException(status_code=503, detail="Ransomware orchestrator not available")
+
+    try:
+        orchestrator = get_ransomware_orchestrator_agent()
+        results = []
+
+        for cmd_req in request.commands:
+            result = orchestrator.process_command(
+                cmd_req.command,
+                cmd_req.command_id,
+                cmd_req.source_host
+            )
+            if cmd_req.source_host:
+                result['source_host'] = cmd_req.source_host
+            if cmd_req.process_name:
+                result['process_name'] = cmd_req.process_name
+            results.append(result)
+
+        processing_time = (time.time() - start_time) * 1000
+
+        ransomware_count = sum(
+            1 for r in results
+            if r.get('pipeline_results', {}).get('detection', {}).get('is_ransomware')
+        )
+        critical_count = sum(1 for r in results if r.get('severity') == 'CRITICAL')
+        high_count = sum(1 for r in results if r.get('severity') == 'HIGH')
+        medium_count = sum(1 for r in results if r.get('severity') == 'MEDIUM')
+
+        return {
+            "success": True,
+            "summary": {
+                "total_scanned": len(results),
+                "ransomware_detected": ransomware_count,
+                "safe_detected": len(results) - ransomware_count,
+                "critical_severity": critical_count,
+                "high_severity": high_count,
+                "medium_severity": medium_count,
+                "low_severity": len(results) - critical_count - high_count - medium_count
+            },
+            "results": results,
+            "processing_time_ms": round(processing_time, 2)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scan/quick")
+async def quick_scan(request: QuickScanRequest):
+    """Quick detection-only scan without full pipeline."""
+    if not get_ransomware_detection_agent:
+        raise HTTPException(status_code=503, detail="Detection agent not available")
+
+    try:
+        detection_agent = get_ransomware_detection_agent()
+        result = detection_agent.analyze(request.command)
+
+        return {
+            "success": True,
+            "result": {
+                "is_ransomware": result.get('is_ransomware'),
+                "confidence": result.get('confidence'),
+                "risk_score": result.get('risk_score'),
+                "severity": result.get('severity'),
+                "model_used": result.get('model_used')
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/scan/explain")
+async def scan_with_explanation(request: CommandScanRequest):
+    """Scan with detailed explainability output. No response actions."""
+    if not get_ransomware_detection_agent or not get_ransomware_explainability_agent:
+        raise HTTPException(status_code=503, detail="Agent services not available")
+
+    try:
+        detection_agent = get_ransomware_detection_agent()
+        detection_result = detection_agent.analyze(request.command, request.command_id)
+
+        explainability_agent = get_ransomware_explainability_agent()
+        explain_result = explainability_agent.analyze(
+            request.command,
+            detection_result['command_id'],
+            detection_result
+        )
+
+        return {
+            "success": True,
+            "detection": detection_result,
+            "explainability": explain_result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# LIST / HISTORY ENDPOINTS
+# =============================================================================
+
+@router.get("/list")
+async def list_ransomware_threats(
+    limit: int = Query(50, le=200),
+    severity: Optional[str] = None,
+    status: Optional[str] = None
+):
+    """List all detected ransomware threats with optional filtering."""
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("threats")
+            if collection is not None:
+                query = {"threat_type": "ransomware"}
+                if severity:
+                    query["severity"] = severity.upper()
+                if status:
+                    query["status"] = status.lower()
+
+                cursor = collection.find(query).sort("detected_at", -1).limit(limit)
+                threats = []
+                for threat in cursor:
+                    threats.append({
+                        "id": threat.get("threat_id", str(threat.get("_id"))),
+                        "type": "Ransomware",
+                        "severity": threat.get("severity", "HIGH"),
+                        "confidence": threat.get("confidence", 0),
+                        "status": threat.get("status", "active").title(),
+                        "source_host": threat.get("source_host", "unknown"),
+                        "process_name": threat.get("process_name", "unknown"),
+                        "attack_stage": threat.get("attack_stage", "unknown"),
+                        "behavior_categories": threat.get("behavior_categories", []),
+                        "detected_at": threat.get("detected_at").isoformat()
+                            if threat.get("detected_at") else datetime.now(timezone.utc).isoformat(),
+                        "description": threat.get("command_preview") or "Ransomware command detected"
+                    })
+
+                total = collection.count_documents(query)
+                return {"success": True, "threats": threats, "total": total, "data_source": "database"}
+        except Exception as e:
+            print(f"Database error: {e}")
+
+    # Fallback mock
+    severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+    stages = ["impact", "lateral_movement", "defense_evasion", "persistence"]
+    threats = []
+    for i in range(min(limit, 20)):
+        sev = severity or random.choice(severities)
+        threats.append({
+            "id": f"RAN-{1000 + i}",
+            "type": "Ransomware",
+            "severity": sev,
+            "confidence": round(random.uniform(75, 99), 1),
+            "status": "Active",
+            "source_host": f"WORKSTATION-{i:03d}",
+            "process_name": random.choice(["cmd.exe", "powershell.exe", "wscript.exe"]),
+            "attack_stage": random.choice(stages),
+            "behavior_categories": ["shadow_deletion", "boot_modification"],
+            "detected_at": (datetime.now(timezone.utc) - timedelta(hours=random.randint(0, 72))).isoformat(),
+            "description": "Ransomware behavior detected in process command"
+        })
+
+    return {"success": True, "threats": threats, "total": len(threats), "data_source": "mock"}
+
+
+@router.get("/scans/list")
+async def list_ransomware_scans(
+    limit: int = Query(50, le=200),
+    is_ransomware: Optional[bool] = None
+):
+    """List all ransomware scan history."""
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("ransomware_scans")
+            if collection is not None:
+                query = {}
+                if is_ransomware is not None:
+                    query["is_ransomware"] = is_ransomware
+
+                cursor = collection.find(query).sort("scanned_at", -1).limit(limit)
+                scans = []
+                for scan in cursor:
+                    scans.append({
+                        "id": scan.get("scan_id", str(scan.get("_id"))),
+                        "command_preview": scan.get("command_preview", "")[:100],
+                        "source_host": scan.get("source_host", "unknown"),
+                        "process_name": scan.get("process_name", "unknown"),
+                        "prediction": "Ransomware" if scan.get("is_ransomware") else "Safe",
+                        "confidence": round(
+                            scan.get("confidence", 0) * 100
+                            if scan.get("confidence", 0) <= 1
+                            else scan.get("confidence", 0), 1
+                        ),
+                        "severity": scan.get("risk_level", "LOW"),
+                        "behavior_categories": scan.get("behavior_categories", []),
+                        "scanned_at": scan.get("scanned_at").isoformat()
+                            if scan.get("scanned_at") else datetime.now(timezone.utc).isoformat()
+                    })
+
+                total = collection.count_documents(query)
+                return {"success": True, "scans": scans, "total": total, "data_source": "database"}
+        except Exception as e:
+            print(f"Database error fetching scans: {e}")
+
+    # Fallback mock
+    mock_scans = []
+    for i in range(min(limit, 10)):
+        is_ran = random.random() > 0.5
+        mock_scans.append({
+            "id": f"RSCAN-{10000 + i}",
+            "command_preview": "vssadmin delete shadows /all" if is_ran else "notepad.exe doc.txt",
+            "source_host": f"WORKSTATION-{i:03d}",
+            "process_name": "cmd.exe" if is_ran else "explorer.exe",
+            "prediction": "Ransomware" if is_ran else "Safe",
+            "confidence": round(random.uniform(80, 99) if is_ran else random.uniform(5, 30), 1),
+            "severity": random.choice(["CRITICAL", "HIGH"]) if is_ran else "LOW",
+            "behavior_categories": ["shadow_deletion"] if is_ran else [],
+            "scanned_at": (datetime.now(timezone.utc) - timedelta(hours=random.randint(0, 48))).isoformat()
+        })
+
+    return {"success": True, "scans": mock_scans, "total": len(mock_scans), "data_source": "mock"}
+
+
+@router.get("/alerts")
+async def get_ransomware_alerts(limit: int = Query(50, le=200)):
+    """Get ransomware alerts logged to MongoDB."""
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("alerts")
+            if collection is not None:
+                cursor = collection.find({"type": "ransomware"}).sort("timestamp", -1).limit(limit)
+                alerts = []
+                for alert in cursor:
+                    alerts.append({
+                        "id": str(alert.get("_id")),
+                        "incident_id": alert.get("incident_id"),
+                        "severity": alert.get("severity", "HIGH"),
+                        "risk_score": alert.get("risk_score", 0),
+                        "source_host": alert.get("source_host", "unknown"),
+                        "behaviors": alert.get("behaviors", []),
+                        "timestamp": alert.get("timestamp")
+                    })
+                return {"success": True, "alerts": alerts, "total": len(alerts), "data_source": "database"}
+        except Exception as e:
+            print(f"Database error fetching alerts: {e}")
+
+    return {"success": True, "alerts": [], "total": 0, "data_source": "unavailable"}
+
+
+@router.get("/blocked-hashes")
+async def get_blocked_hashes():
+    """Get list of blocked file hashes."""
+    if not get_ransomware_response_agent:
+        raise HTTPException(status_code=503, detail="Response agent not available")
+    response = get_ransomware_response_agent()
+    hashes = response.get_blocked_hashes()
+    return {"success": True, "blocked_hashes": hashes, "count": len(hashes)}
+
+
+@router.get("/isolated-hosts")
+async def get_isolated_hosts():
+    """Get list of isolated hosts."""
+    if not get_ransomware_response_agent:
+        raise HTTPException(status_code=503, detail="Response agent not available")
+    response = get_ransomware_response_agent()
+    hosts = response.get_isolated_hosts()
+    return {"success": True, "isolated_hosts": hosts, "count": len(hosts)}
+
+
+@router.get("/stats")
+async def get_ransomware_stats():
+    """Get comprehensive ransomware pipeline statistics."""
+    stats = {
+        "orchestrator": {},
+        "detection": {},
+        "explainability": {},
+        "response": {},
+        "ml_service": {}
+    }
+    try:
+        if get_ransomware_orchestrator_agent:
+            stats["orchestrator"] = get_ransomware_orchestrator_agent().get_stats()
+        if get_ransomware_detection_agent:
+            stats["detection"] = get_ransomware_detection_agent().get_stats()
+        if get_ransomware_explainability_agent:
+            stats["explainability"] = get_ransomware_explainability_agent().get_stats()
+        if get_ransomware_response_agent:
+            stats["response"] = get_ransomware_response_agent().get_stats()
+        if get_ransomware_service:
+            stats["ml_service"] = get_ransomware_service().get_stats()
+
+        return {"success": True, "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/model/info")
+async def get_model_info():
+    """Get information about the loaded ransomware ML model."""
+    try:
+        if not get_ransomware_service:
+            raise HTTPException(status_code=503, detail="Ransomware service not available")
+        service = get_ransomware_service()
+        return {"success": True, "model_info": service.get_model_info()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health")
+async def ransomware_health():
+    """Health check for the ransomware detection module."""
+    try:
+        model_loaded = False
+        if get_ransomware_detection_agent:
+            agent = get_ransomware_detection_agent()
+            model_loaded = agent.is_model_loaded()
+
+        orchestrator_ready = get_ransomware_orchestrator_agent is not None
+        status = "healthy" if (model_loaded and orchestrator_ready) else (
+            "degraded" if orchestrator_ready else "unavailable"
+        )
+
+        return {
+            "success": True,
+            "status": status,
+            "model_loaded": model_loaded,
+            "orchestrator_ready": orchestrator_ready,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "unavailable",
+            "error": str(e),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+
+
+@router.get("/{threat_id}")
+async def get_ransomware_threat(threat_id: str):
+    """Get detailed information about a specific ransomware threat."""
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("threats")
+            if collection is not None:
+                threat = collection.find_one({"threat_id": threat_id})
+                if threat:
+                    return {
+                        "success": True,
+                        "threat": {
+                            "id": threat.get("threat_id", str(threat.get("_id"))),
+                            "type": "Ransomware",
+                            "severity": threat.get("severity", "HIGH"),
+                            "confidence": threat.get("confidence", 0),
+                            "status": threat.get("status", "active").title(),
+                            "source_host": threat.get("source_host", "unknown"),
+                            "process_name": threat.get("process_name", "unknown"),
+                            "user": threat.get("user", "unknown"),
+                            "attack_stage": threat.get("attack_stage"),
+                            "behavior_categories": threat.get("behavior_categories", []),
+                            "mitre_tactics": threat.get("mitre_tactics", []),
+                            "iocs": threat.get("iocs", {}),
+                            "command_preview": threat.get("command_preview", ""),
+                            "action_taken": threat.get("action_taken"),
+                            "detected_at": threat.get("detected_at").isoformat()
+                                if threat.get("detected_at") else None,
+                            "recommendations": [
+                                "Isolate the affected host immediately",
+                                "Check for encrypted files on the system",
+                                "Review process tree for parent/child processes",
+                                "Capture memory dump before remediation",
+                                "Restore from clean backup if encryption confirmed"
+                            ]
+                        },
+                        "data_source": "database"
+                    }
+        except Exception as e:
+            print(f"Database error: {e}")
+
+    # Fallback mock
+    return {
+        "success": True,
+        "threat": {
+            "id": threat_id,
+            "type": "Ransomware",
+            "severity": "CRITICAL",
+            "confidence": 97.3,
+            "status": "Active",
+            "source_host": "WORKSTATION-042",
+            "process_name": "cmd.exe",
+            "user": "user@domain.com",
+            "attack_stage": "impact",
+            "behavior_categories": ["shadow_deletion", "boot_modification"],
+            "mitre_tactics": ["T1490: Inhibit System Recovery", "T1542: Pre-OS Boot"],
+            "command_preview": "vssadmin delete shadows /all /quiet",
+            "detected_at": datetime.now(timezone.utc).isoformat(),
+            "recommendations": [
+                "Isolate the affected host immediately",
+                "Check for encrypted files on the system",
+                "Review process tree for parent/child processes",
+                "Capture memory dump before remediation",
+                "Restore from clean backup if encryption confirmed"
+            ]
+        },
+        "data_source": "mock"
+    }

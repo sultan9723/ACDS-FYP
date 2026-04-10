@@ -9,6 +9,7 @@ import Layout from "./components/Layout/Layout";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import PhishingModule from "./pages/PhishingModule";
+import RansomwareModule from "./pages/RansomwareModule";
 import Logs from "./pages/Logs";
 import Login from "./pages/Login";
 import Reports from "./pages/Reports";
@@ -21,7 +22,6 @@ import { DashboardProvider } from "./context/DashboardContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/Auth/ProtectedRoute";
 
-// Wrapper for protected layout routes
 const ProtectedLayout = () => {
   return (
     <ProtectedRoute>
@@ -47,19 +47,20 @@ function AppRoutes() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/blog" element={<Blog />} />
 
-      {/* Test Routes (public for debugging) */}
+      {/* Test Routes */}
       <Route path="/test" element={<ConnectionTest />} />
       <Route path="/testing" element={<AutomatedTesting />} />
 
-      {/* Protected Routes - Dashboard and App */}
+      {/* Protected Routes */}
       <Route path="/dashboard" element={<ProtectedLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="phishing" element={<PhishingModule />} />
+        <Route path="ransomware" element={<RansomwareModule />} />
         <Route path="logs" element={<Logs />} />
         <Route path="reports" element={<Reports />} />
       </Route>
 
-      {/* Catch all - redirect to landing */}
+      {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
