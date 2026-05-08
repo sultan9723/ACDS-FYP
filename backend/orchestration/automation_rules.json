@@ -1,0 +1,6 @@
+{
+  "ransomware": {"action": "isolate_host"},
+  "phishing": {"action": "block_sender"},
+  "ddos": {"action": "rate_limit_ip"},
+  "credential_stuffing": {"action": "lock_account"}
+}

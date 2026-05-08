@@ -205,3 +205,14 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Generated ML Models and Data
+backend/ml/models/*.pkl
+backend/ml/models/*.json
+
+# Generated Reports
+reports/*.pdf
+
+# Temporary quickstart script
+run_quickstart.py
+

@@ -1,0 +1,56 @@
+# =============================================================================
+# ACDS - Autonomous Cyber Defense System Requirements
+# =============================================================================
+
+# FastAPI Backend
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+pydantic[email]>=2.5.0
+
+# Authentication
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+
+# Database
+pymongo>=4.6.0
+motor>=3.3.0  # Async MongoDB driver
+
+# Machine Learning
+scikit-learn>=1.3.0
+pandas>=2.1.0
+numpy>=1.26.0
+joblib>=1.3.0
+
+# NLP / Text Processing
+nltk>=3.8.0
+datasets>=2.15.0  # HuggingFace datasets
+
+# PDF Report Generation
+reportlab>=4.0.0
+
+# Configuration
+python-dotenv>=1.0.0
+
+# Scheduling
+apscheduler>=3.10.0
+
+# HTTP Client
+requests>=2.31.0
+httpx>=0.25.0
+
+# Logging & Monitoring
+structlog>=23.2.0
+
+# Development Tools
+black>=23.11.0
+flake8>=6.1.0
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Optional: Streamlit for quick demos
+streamlit>=1.29.0
+
+# PDF Generation
+reportlab>=4.0.0
+

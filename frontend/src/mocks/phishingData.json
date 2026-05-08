@@ -1,0 +1,106 @@
+{
+  "stats": {
+    "totalEmails": 12450,
+    "phishingDetected": 125,
+    "activeThreats": 5,
+    "autoResolved": 61,
+    "safeEmails": 12108,
+    "accuracy": 92
+  },
+  "detectionsOverTime": [
+    { "time": "0", "value": 4 },
+    { "time": "2", "value": 5 },
+    { "time": "4", "value": 4 },
+    { "time": "6", "value": 10 },
+    { "time": "8", "value": 11 },
+    { "time": "10", "value": 10 },
+    { "time": "12", "value": 12 }
+  ],
+  "threatTypes": [
+    { "name": "Phishing", "value": 150 },
+    { "name": "Ransomware", "value": 90 },
+    { "name": "Credential Stuffing", "value": 45 }
+  ],
+  "recentEmails": [
+    {
+      "id": 1,
+      "time": "10:54:21",
+      "sender": "security-update@paypa1.com",
+      "subject": "Urgent: Account Suspended",
+      "confidence": 98,
+      "status": "Phishing"
+    },
+    {
+      "id": 2,
+      "time": "10:52:15",
+      "sender": "hr@company-internal.com",
+      "subject": "Q4 Performance Review",
+      "confidence": 12,
+      "status": "Safe"
+    },
+    {
+      "id": 3,
+      "time": "10:48:33",
+      "sender": "ceo@urgent-mail.net",
+      "subject": "Wire Transfer Request",
+      "confidence": 89,
+      "status": "Phishing"
+    },
+    {
+      "id": 4,
+      "time": "10:45:10",
+      "sender": "newsletter@techweekly.com",
+      "subject": "Weekly Tech Digest",
+      "confidence": 5,
+      "status": "Safe"
+    },
+    {
+      "id": 5,
+      "time": "10:41:05",
+      "sender": "support@micros0ft-auth.com",
+      "subject": "Password Expiry Notice",
+      "confidence": 95,
+      "status": "Phishing"
+    }
+  ],
+  "accuracyOverTime": [
+    { "time": "00:00", "accuracy": 92 },
+    { "time": "04:00", "accuracy": 94 },
+    { "time": "08:00", "accuracy": 91 },
+    { "time": "12:00", "accuracy": 98 },
+    { "time": "16:00", "accuracy": 96 },
+    { "time": "20:00", "accuracy": 99 }
+  ],
+  "confusionMatrix": {
+    "tp": 108,
+    "fp": 9,
+    "fn": 7,
+    "tn": 98
+  },
+  "modelLogs": [
+    {
+      "id": 1,
+      "date": "2025-03-02",
+      "type": "Phishing",
+      "decision": "True Positive",
+      "action": "Account Lock",
+      "modelVersion": "v2"
+    },
+    {
+      "id": 2,
+      "date": "2025-04-28",
+      "type": "Phishing",
+      "decision": "True Positive",
+      "action": "Account Lock",
+      "modelVersion": "v1"
+    },
+    {
+      "id": 3,
+      "date": "2025-04-28",
+      "type": "Phishing",
+      "decision": "True Positive",
+      "action": "Account",
+      "modelVersion": "v1"
+    }
+  ]
+}

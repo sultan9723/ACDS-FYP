@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "date": "2025-11-28 10:54:21",
+    "sender": "security-update@paypa1.com",
+    "subject": "Urgent: Account Suspended",
+    "confidence": 98,
+    "prediction": "Phishing",
+    "explanation": "The sender domain 'paypa1.com' uses a homograph attack (1 instead of l). The email contains urgent language ('Urgent', 'Suspended') and a suspicious link to a non-PayPal domain.",
+    "action": "Blocked Sender & Quarantined Email",
+    "features": {
+      "domain_age": "2 days",
+      "has_suspicious_link": true,
+      "urgent_language": true,
+      "spf_record": "Fail"
+    }
+  },
+  {
+    "id": 2,
+    "date": "2025-11-28 10:52:15",
+    "sender": "hr@company-internal.com",
+    "subject": "Q4 Performance Review",
+    "confidence": 12,
+    "prediction": "Safe",
+    "explanation": "Internal domain verified. Content matches expected business communication patterns.",
+    "action": "Delivered to Inbox",
+    "features": {
+      "domain_age": "5 years",
+      "has_suspicious_link": false,
+      "urgent_language": false,
+      "spf_record": "Pass"
+    }
+  },
+  {
+    "id": 3,
+    "date": "2025-11-28 10:48:33",
+    "sender": "ceo@urgent-mail.net",
+    "subject": "Wire Transfer Request",
+    "confidence": 89,
+    "prediction": "Phishing",
+    "explanation": "External sender impersonating internal executive. Request involves financial transaction.",
+    "action": "Flagged as CEO Fraud",
+    "features": {
+      "domain_age": "1 week",
+      "has_suspicious_link": false,
+      "urgent_language": true,
+      "spf_record": "SoftFail"
+    }
+  },
+  {
+    "id": 5,
+    "date": "2025-11-28 10:41:05",
+    "sender": "support@micros0ft-auth.com",
+    "subject": "Password Expiry Notice",
+    "confidence": 95,
+    "prediction": "Phishing",
+    "explanation": "Typosquatting domain detected ('micros0ft'). Link redirects to a known credential harvesting site.",
+    "action": "Blocked & Reported",
+    "features": {
+      "domain_age": "1 day",
+      "has_suspicious_link": true,
+      "urgent_language": true,
+      "spf_record": "Fail"
+    }
+  }
+]
