@@ -158,6 +158,9 @@ const ThreatResponseFeed = () => {
                       From: {item.data.sender}
                     </p>
                     <div className="flex items-center space-x-3 mt-2">
+                      <span className="text-xs px-2 py-1 rounded bg-slate-700/60 text-slate-300 uppercase">
+                        {item.data.module || "phishing"}
+                      </span>
                       <span
                         className={`text-xs px-2 py-1 rounded ${getSeverityColor(
                           item.data.severity
@@ -173,6 +176,11 @@ const ThreatResponseFeed = () => {
                         ID: {item.data.id}
                       </span>
                     </div>
+                    {item.data.action_taken && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        Action: {String(item.data.action_taken).replace(/_/g, " ")}
+                      </p>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -193,6 +201,9 @@ const ThreatResponseFeed = () => {
                     </div>
                     <p className="text-xs text-slate-400 mb-2">
                       Threat ID: {item.data.threat_id}
+                    </p>
+                    <p className="text-xs text-slate-500 mb-2 uppercase">
+                      Module: {item.data.module || "phishing"}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {(item.data.actions || []).map((action, actionIdx) => (

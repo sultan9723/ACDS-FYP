@@ -124,26 +124,18 @@ export const DashboardProvider = ({ children }) => {
       if (threatsData && threatsData.length > 0) {
         const threatsFeed = threatsData.slice(0, 20).map((t) => ({
           id: t.id,
+          module: t.module || (t.is_malware ? "malware" : "phishing"),
           severity: t.severity || "MEDIUM",
           confidence: t.confidence || 0,
           sender: t.source || t.sender || "Unknown",
-          subject: t.description || t.subject || "Suspicious email",
+          subject:
+            t.subject ||
+            t.description ||
+            (t.is_malware ? "Suspicious file detected" : "Suspicious email"),
+          action_taken: t.action_taken || null,
           detected_at: t.detected_at || t.timestamp || new Date().toISOString(),
         }));
         setLiveThreats(threatsFeed);
-        
-        // Generate response actions for resolved threats
-        const resolvedActions = threatsData
-          .filter((t) => t.status === "Resolved" || t.status === "resolved")
-          .slice(0, 10)
-          .map((t) => ({
-            threat_id: t.id,
-            action: "quarantine_email",
-            actions: ["quarantine_email", "block_sender"],
-            timestamp: t.detected_at || new Date().toISOString(),
-            status: "completed",
-          }));
-        setResponseActions(resolvedActions);
       }
 
       // Fetch first incident details if threats exist
@@ -163,7 +155,68 @@ export const DashboardProvider = ({ children }) => {
       setConfusionMatrixData(cmData || { tp: 0, fp: 0, fn: 0, tn: 0 });
 
       // Set activity logs
-      setActivityLogs(activityData?.logs || []);
+      const normalizedActivityLogs = activityData?.logs || [];
+      setActivityLogs(normalizedActivityLogs);
+
+      const responseActionFeed = normalizedActivityLogs
+        .filter((log) => {
+          if (!log) return false;
+          const eventType = String(log.event || log.action_type || "").toLowerCase();
+          const actions = log.actions || log.details?.actions || [];
+          return (
+            eventType === "threat_resolved" ||
+            eventType === "threat_detected" ||
+            actions.length > 0 ||
+            Boolean(log.action_taken || log.details?.action_taken)
+          );
+        })
+        .slice(0, 20)
+        .map((log) => {
+          const actions =
+            (log.actions && log.actions.length > 0
+              ? log.actions
+              : log.details?.actions) ||
+            (log.action_taken ? [log.action_taken] : []);
+
+          return {
+            threat_id: log.threat_id || log.id,
+            module: log.module || (log.is_malware ? "malware" : "phishing"),
+            action: log.action_taken || log.details?.action_taken || actions[0] || "alert",
+            actions,
+            timestamp: log.timestamp || new Date().toISOString(),
+            status: "completed",
+          };
+        });
+
+      const threatDerivedActions = (threatsData || [])
+        .filter(
+          (t) =>
+            t &&
+            (t.status === "Resolved" ||
+              t.status === "resolved" ||
+              (Array.isArray(t.actions) && t.actions.length > 0) ||
+              Boolean(t.action_taken))
+        )
+        .slice(0, 20)
+        .map((t) => ({
+          threat_id: t.id,
+          module: t.module || (t.is_malware ? "malware" : "phishing"),
+          action: t.action_taken || (Array.isArray(t.actions) && t.actions.length > 0 ? t.actions[0] : "alert"),
+          actions:
+            (Array.isArray(t.actions) && t.actions.length > 0
+              ? t.actions
+              : t.action_taken
+              ? [t.action_taken]
+              : []),
+          timestamp: t.detected_at || t.timestamp || new Date().toISOString(),
+          status: "completed",
+        }));
+
+      const combinedResponseActions = [...responseActionFeed, ...threatDerivedActions]
+        .filter((item) => item && item.threat_id)
+        .slice(0, 20);
+
+      setResponseActions(combinedResponseActions);
 
       // Set demo status
       if (demoStatusData) {

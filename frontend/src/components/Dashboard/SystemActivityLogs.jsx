@@ -67,10 +67,32 @@ const SystemActivityLogs = () => {
     });
   };
 
+  const isScanEvent = (event = "") => {
+    const normalized = String(event).toLowerCase();
+    return (
+      normalized === "email_scanned" ||
+      normalized === "email_processed" ||
+      normalized === "malware_sample_scanned" ||
+      normalized === "malware_processed"
+    );
+  };
+
+  const isThreatEvent = (event = "") => {
+    const normalized = String(event).toLowerCase();
+    return normalized === "threat_response" || normalized === "threat_detected";
+  };
+
+  const isResolvedEvent = (event = "") => {
+    const normalized = String(event).toLowerCase();
+    return normalized === "threat_resolved";
+  };
+
   const getEventIcon = (event) => {
     switch (event) {
       case "email_scanned":
       case "email_processed":
+      case "malware_sample_scanned":
+      case "malware_processed":
         return <DocumentTextIcon className="h-4 w-4 text-blue-400" />;
       case "threat_response":
       case "threat_detected":
@@ -81,6 +103,7 @@ const SystemActivityLogs = () => {
         return <ExclamationTriangleIcon className="h-4 w-4 text-red-400" />;
       case "test_completed":
       case "batch_completed":
+      case "malware_batch_completed":
         return <CheckCircleIcon className="h-4 w-4 text-cyan-400" />;
       case "demo_started":
       case "demo_stopped":
@@ -96,6 +119,8 @@ const SystemActivityLogs = () => {
     switch (event) {
       case "email_scanned":
       case "email_processed":
+      case "malware_sample_scanned":
+      case "malware_processed":
         return "border-l-blue-500";
       case "threat_response":
       case "threat_detected":
@@ -106,6 +131,7 @@ const SystemActivityLogs = () => {
         return "border-l-red-500";
       case "test_completed":
       case "batch_completed":
+      case "malware_batch_completed":
         return "border-l-cyan-500";
       case "demo_started":
       case "demo_stopped":
@@ -179,8 +205,10 @@ const SystemActivityLogs = () => {
               <option value="all">All Events</option>
               <option value="email_scanned">Scans</option>
               <option value="email_processed">Processed</option>
+              <option value="malware_sample_scanned">Malware Scans</option>
               <option value="threat_detected">Threats</option>
               <option value="threat_resolved">Resolved</option>
+              <option value="malware_batch_completed">Malware Batches</option>
               <option value="batch_processed">Batches</option>
               <option value="error">Errors</option>
             </select>
@@ -213,8 +241,7 @@ const SystemActivityLogs = () => {
             currentLogs.filter(
               (l) =>
                 l &&
-                (l.event === "email_scanned" ||
-                  l.action_type === "email_processed")
+                (isScanEvent(l.event) || isScanEvent(l.action_type))
             ).length
           }
         </span>
@@ -224,15 +251,19 @@ const SystemActivityLogs = () => {
             currentLogs.filter(
               (l) =>
                 l &&
-                (l.event === "threat_response" ||
-                  l.action_type === "threat_detected")
+                (isThreatEvent(l.event) ||
+                  isThreatEvent(l.action_type) ||
+                  l.is_threat ||
+                  l.details?.is_threat)
             ).length
           }
         </span>
         <span className="text-green-400">
           Resolved:{" "}
           {
-            currentLogs.filter((l) => l && l.action_type === "threat_resolved")
+            currentLogs.filter(
+              (l) => l && (isResolvedEvent(l.event) || isResolvedEvent(l.action_type))
+            )
               .length
           }
         </span>
@@ -266,39 +297,46 @@ const SystemActivityLogs = () => {
                   </div>
 
                   {/* Event specific details */}
-                  {(eventType === "email_scanned" ||
-                    eventType === "email_processed") && (
+                  {isScanEvent(eventType) && (
                     <div className="text-xs text-slate-400">
                       <span className="truncate block max-w-[300px] font-medium text-slate-300">
                         {log.subject ||
                           log.details?.subject ||
+                          log.filename ||
+                          log.details?.filename ||
                           log.message ||
                           "No subject"}
                       </span>
                       <span className="text-slate-500 text-[10px]">
-                        From: {log.sender || log.details?.sender || "Unknown"}
+                        Source: {log.sender || log.details?.sender || "Unknown"}
+                      </span>
+                      <span className="text-slate-500 text-[10px] ml-2 uppercase">
+                        Module: {log.module || log.details?.module || "phishing"}
                       </span>
                       <div className="flex items-center space-x-3 mt-1">
                         <span
                           className={
                             log.is_phishing ||
+                            log.is_malware ||
                             log.is_phishing_detected ||
-                            log.details?.is_phishing
+                            log.details?.is_phishing ||
+                            log.details?.is_malware
                               ? "text-red-400 font-medium"
                               : "text-green-400"
                           }
                         >
                           {log.is_phishing ||
+                          log.is_malware ||
                           log.is_phishing_detected ||
-                          log.details?.is_phishing
-                            ? "⚠ Phishing Detected"
+                          log.details?.is_phishing ||
+                          log.details?.is_malware
+                            ? "⚠ Threat Detected"
                             : "✓ Safe"}
                         </span>
                         <span>
                           Confidence:{" "}
                           {Math.round(
-                            (log.confidence || log.details?.confidence || 0) *
-                              100
+                            (log.confidence || log.details?.confidence || 0) * 100
                           )}
                           %
                         </span>
@@ -320,8 +358,7 @@ const SystemActivityLogs = () => {
                     </div>
                   )}
 
-                  {(eventType === "threat_response" ||
-                    eventType === "threat_detected") && (
+                  {isThreatEvent(eventType) && (
                     <div className="text-xs text-slate-400">
                       <div className="flex items-center gap-2">
                         <span className="text-red-400 font-medium">
@@ -346,6 +383,9 @@ const SystemActivityLogs = () => {
                           Subject: {log.subject}
                         </span>
                       )}
+                      <span className="text-slate-500 block mt-1 uppercase">
+                        Module: {log.module || log.details?.module || "phishing"}
+                      </span>
                       {(log.actions || log.details?.actions) && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           <span className="text-slate-500">Actions:</span>
@@ -366,9 +406,17 @@ const SystemActivityLogs = () => {
                     </div>
                   )}
 
-                  {eventType === "threat_resolved" && (
+                  {isResolvedEvent(eventType) && (
                     <div className="text-xs text-slate-400">
                       <span>Threat resolved automatically</span>
+                      <span className="text-slate-500 block mt-1 uppercase">
+                        Module: {log.module || log.details?.module || "phishing"}
+                      </span>
+                      {(log.action_taken || log.details?.action_taken) && (
+                        <span className="text-slate-500 block mt-1">
+                          Action: {String(log.action_taken || log.details?.action_taken).replace(/_/g, " ")}
+                        </span>
+                      )}
                       {log.details?.actions && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {log.details.actions.map((action, i) => (
@@ -401,19 +449,28 @@ const SystemActivityLogs = () => {
                   )}
 
                   {(eventType === "test_completed" ||
-                    eventType === "batch_completed") && (
+                    eventType === "batch_completed" ||
+                    eventType === "malware_batch_completed") && (
                     <div className="text-xs text-slate-400">
                       <span>
                         Processed:{" "}
                         {log.total_processed ||
                           log.details?.total_processed ||
+                          log.details?.samples_processed ||
+                          log.samples_processed ||
                           0}{" "}
                         | Accuracy:{" "}
                         {Math.round(
                           (log.accuracy || log.details?.accuracy || 0) * 100
                         )}
                         % | Threats:{" "}
-                        {log.threats_found || log.details?.threats_found || 0}
+                        {log.threats_found ||
+                          log.details?.threats_found ||
+                          log.details?.phishing_detected ||
+                          log.details?.malware_detected ||
+                          log.phishing_detected ||
+                          log.malware_detected ||
+                          0}
                       </span>
                     </div>
                   )}

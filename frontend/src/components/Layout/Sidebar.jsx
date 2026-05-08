@@ -20,6 +20,7 @@ const Sidebar = () => {
     { icon: LayoutDashboard, label: "Dashboard",      path: "/dashboard" },
     { icon: ShieldAlert,     label: "Email Phishing", path: "/dashboard/phishing" },
     { icon: Bug,             label: "Ransomware",     path: "/dashboard/ransomware" },
+    { icon: ShieldAlert,     label: "Malware",        path: "/dashboard/malware" },
     { icon: Sparkles,        label: "AI Reports",     path: "/dashboard/reports" },
     { icon: FileText,        label: "Logs",           path: "/dashboard/logs" },
   ];
