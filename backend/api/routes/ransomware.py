@@ -33,28 +33,61 @@ class QuickScanRequest(BaseModel):
 
 
 # =============================================================================
+# 3-LAYER DETECTION MODELS
+# =============================================================================
+
+class FileActivityRequest(BaseModel):
+    """File activity for Layer 3 mass-encryption detection"""
+    path: str = Field(..., description="File system path")
+    operation: str = Field(..., description="Operation type: create, modify, delete, rename")
+    extension: str = Field(..., description="File extension")
+    process_pid: int = Field(..., description="Process ID")
+    process_name: str = Field(..., description="Process executable name")
+    source_host: Optional[str] = Field(None, description="Hostname source")
+
+
+class ThreeLayrDetectionRequest(BaseModel):
+    """Request for 3-layer ransomware detection"""
+    command: Optional[str] = Field(None, description="Process command for Layer 1")
+    binary_path: Optional[str] = Field(None, description="Path to executable for Layer 2 PE header analysis")
+    file_activities: Optional[List[FileActivityRequest]] = Field(None, description="File activities for Layer 3")
+    process_name: Optional[str] = Field(None, description="Process name")
+    process_pid: Optional[int] = Field(None, description="Process ID")
+    source_host: Optional[str] = Field(None, description="Source host")
+    user: Optional[str] = Field(None, description="User account")
+
+
+# =============================================================================
 # Import Services — Orchestrator-based architecture
 # =============================================================================
 
 try:
     from ml.ransomware_service import get_ransomware_service
+    from ml.pe_service import get_pe_detection_service
     from agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
     from agents.ransomware_detection_agent import get_ransomware_detection_agent
     from agents.ransomware_explainability_agent import get_ransomware_explainability_agent
     from agents.ransomware_response_agent import get_ransomware_response_agent
+    from orchestration.encryption_detector import MassEncryptionDetector, FileActivity, BackupSafeFilter
 except ImportError:
     try:
         from backend.ml.ransomware_service import get_ransomware_service
+        from backend.ml.pe_service import get_pe_detection_service
         from backend.agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
         from backend.agents.ransomware_detection_agent import get_ransomware_detection_agent
         from backend.agents.ransomware_explainability_agent import get_ransomware_explainability_agent
         from backend.agents.ransomware_response_agent import get_ransomware_response_agent
+        from backend.orchestration.encryption_detector import MassEncryptionDetector, FileActivity, BackupSafeFilter
     except ImportError:
         get_ransomware_service = None
+        get_pe_detection_service = None
         get_ransomware_orchestrator_agent = None
         get_ransomware_detection_agent = None
         get_ransomware_explainability_agent = None
         get_ransomware_response_agent = None
+        MassEncryptionDetector = None
+        FileActivity = None
+        BackupSafeFilter = None
 
 
 router = APIRouter(prefix="/ransomware", tags=["Ransomware Detection"])
@@ -632,3 +665,316 @@ async def get_ransomware_threat(threat_id: str):
         },
         "data_source": "mock"
     }
+
+
+# =============================================================================
+# 3-LAYER DETECTION ENDPOINTS
+# =============================================================================
+
+@router.post("/detect-layers")
+async def detect_three_layers(request: ThreeLayrDetectionRequest):
+    """
+    Full 3-layer ransomware detection analysis.
+    
+    UC-04 Ransomware Detection System:
+    
+    Layer 1: Runtime Command Behavior Detection
+    - Input: Process command strings
+    - Model: TF-IDF + Random Forest
+    - Output: Confidence score for ransomware behavior
+    
+    Layer 2: Static PE Header Binary Detection
+    - Input: PE header features from executable
+    - Model: Gradient Boosting Classifier
+    - Output: Confidence score for ransomware binary
+    
+    Layer 3: Mass-Encryption Orchestrator
+    - Input: File system activity metrics
+    - Model: Rule-based threshold analysis
+    - Output: Alert if anomalous encryption detected
+    
+    Returns: Comprehensive multi-layer analysis with SOAR readiness
+    """
+    start_time = time.time()
+    
+    results = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "layers": {},
+        "overall_verdict": "BENIGN",
+        "detection_confidence": 0.0,
+        "source_host": request.source_host,
+        "process_name": request.process_name,
+        "process_pid": request.process_pid,
+        "user": request.user
+    }
+    
+    try:
+        # ===================================================================
+        # LAYER 1: Command Behavior Analysis
+        # ===================================================================
+        if request.command and get_ransomware_detection_agent:
+            try:
+                detection_agent = get_ransomware_detection_agent()
+                layer1_result = detection_agent.analyze(request.command)
+                
+                results["layers"]["layer1_command_behavior"] = {
+                    "status": "success",
+                    "is_ransomware": layer1_result.get('is_ransomware', False),
+                    "confidence": float(layer1_result.get('confidence', 0)),
+                    "risk_score": float(layer1_result.get('risk_score', 0)),
+                    "severity": layer1_result.get('severity', 'LOW'),
+                    "detected_patterns": layer1_result.get('behavior_categories', []),
+                    "iocs": layer1_result.get('iocs', {})
+                }
+            except Exception as e:
+                results["layers"]["layer1_command_behavior"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        # ===================================================================
+        # LAYER 2: PE Header Binary Detection
+        # ===================================================================
+        if request.binary_path and get_pe_detection_service:
+            try:
+                pe_service = get_pe_detection_service()
+                layer2_result = pe_service.predict(request.binary_path)
+                
+                results["layers"]["layer2_pe_header"] = {
+                    "status": "success" if not layer2_result.get("error") else "error",
+                    "is_ransomware": layer2_result.get("is_ransomware", False),
+                    "confidence": float(layer2_result.get("confidence", 0.0)),
+                    "model": "Gradient Boosting Classifier (ransomware-only filtered)",
+                    "binary_path": request.binary_path,
+                    "features_extracted": layer2_result.get("features_extracted", 0)
+                }
+                
+                if layer2_result.get("error"):
+                    results["layers"]["layer2_pe_header"]["error"] = layer2_result["error"]
+                
+            except Exception as e:
+                results["layers"]["layer2_pe_header"] = {
+                    "status": "error",
+                    "error": str(e),
+                    "model": "Gradient Boosting Classifier (ransomware-only filtered)"
+                }
+        else:
+            # Layer 2 not requested or service unavailable
+            results["layers"]["layer2_pe_header"] = {
+                "status": "ready",
+                "note": "Layer 2 requires binary_path parameter for PE header extraction",
+                "model": "Gradient Boosting Classifier (ransomware-only filtered)",
+                "confidence": 0.0
+            }
+        
+        # ===================================================================
+        # LAYER 3: Mass-Encryption Detection Orchestrator
+        # ===================================================================
+        if request.file_activities and MassEncryptionDetector:
+            try:
+                detector = MassEncryptionDetector()
+                
+                # Convert request activities to FileActivity objects
+                for activity in request.file_activities:
+                    file_act = FileActivity(
+                        timestamp=time.time(),
+                        path=activity.path,
+                        operation=activity.operation,
+                        extension=activity.extension,
+                        process_pid=activity.process_pid,
+                        process_name=activity.process_name
+                    )
+                    detector.add_activity(file_act)
+                
+                # Run detection
+                alert = detector.detect()
+                
+                if alert:
+                    results["layers"]["layer3_mass_encryption"] = {
+                        "status": "threat_detected",
+                        "threat_level": alert.threat_level,
+                        "confidence": float(alert.confidence),
+                        "indicators": alert.detected_indicators,
+                        "affected_files": alert.affected_files_count,
+                        "process_name": alert.process_name,
+                        "process_pid": alert.process_pid,
+                        "recommended_action": alert.recommended_action,
+                        "is_backup_safe": alert.backup_safe
+                    }
+                else:
+                    results["layers"]["layer3_mass_encryption"] = {
+                        "status": "monitoring",
+                        "confidence": 0.0,
+                        "note": "File activity tracked but no threats detected"
+                    }
+            except Exception as e:
+                results["layers"]["layer3_mass_encryption"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        # ===================================================================
+        # OVERALL VERDICT
+        # ===================================================================
+        layer1 = results["layers"].get("layer1_command_behavior", {})
+        layer2 = results["layers"].get("layer2_pe_header", {})
+        layer3 = results["layers"].get("layer3_mass_encryption", {})
+        
+        threats_detected = 0
+        total_confidence = 0.0
+        active_layers = []
+        
+        if layer1.get("is_ransomware"):
+            threats_detected += 1
+            total_confidence += layer1.get("confidence", 0)
+            active_layers.append("Layer 1: Command Behavior")
+        
+        if layer2.get("status") == "success" and layer2.get("is_ransomware"):
+            threats_detected += 1
+            total_confidence += layer2.get("confidence", 0)
+            active_layers.append("Layer 2: PE Header")
+        
+        if layer3.get("status") == "threat_detected":
+            threats_detected += 1
+            total_confidence += layer3.get("confidence", 0)
+            active_layers.append("Layer 3: Mass-Encryption")
+        
+        # Calculate overall verdict
+        if threats_detected >= 2:
+            results["overall_verdict"] = "RANSOMWARE_DETECTED"
+            results["detection_confidence"] = min(1.0, total_confidence / threats_detected)
+            results["triggered_layers"] = active_layers
+        elif threats_detected == 1:
+            results["overall_verdict"] = "SUSPICIOUS"
+            results["detection_confidence"] = total_confidence
+            results["triggered_layers"] = active_layers
+        else:
+            results["overall_verdict"] = "BENIGN"
+            results["detection_confidence"] = 0.0
+            results["triggered_layers"] = []
+        
+        # Save to database if ransomware detected
+        if results["overall_verdict"] == "RANSOMWARE_DETECTED":
+            threat_data = {
+                "severity": "CRITICAL" if results["detection_confidence"] > 0.8 else "HIGH",
+                "confidence": results["detection_confidence"],
+                "source_host": request.source_host,
+                "process_name": request.process_name,
+                "user": request.user,
+                "command": request.command or "Layer 3: File activity",
+                "layers_triggered": [k for k, v in results["layers"].items() 
+                                    if v.get("status") == "threat_detected" or v.get("is_ransomware")]
+            }
+            threat_id = save_threat_to_database(threat_data)
+            if threat_id:
+                results["threat_id"] = threat_id
+        
+        results["processing_time_ms"] = round((time.time() - start_time) * 1000, 2)
+        
+        return {"success": True, "result": results}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"3-Layer detection error: {str(e)}")
+
+
+@router.post("/monitor-encryption")
+async def monitor_file_encryption(file_activities: List[FileActivityRequest]):
+    """
+    Monitor and analyze file activity for ransomware-like encryption patterns.
+    
+    This endpoint directly uses Layer 3 (Mass-Encryption Detector) to track
+    and detect anomalous file modification behavior.
+    
+    Returns alerts if mass encryption is detected.
+    """
+    if not MassEncryptionDetector or not FileActivity:
+        raise HTTPException(status_code=503, detail="Encryption detector not available")
+    
+    try:
+        detector = MassEncryptionDetector()
+        
+        # Convert request to FileActivity objects
+        for activity in file_activities:
+            file_act = FileActivity(
+                timestamp=time.time(),
+                path=activity.path,
+                operation=activity.operation,
+                extension=activity.extension,
+                process_pid=activity.process_pid,
+                process_name=activity.process_name
+            )
+            detector.add_activity(file_act)
+        
+        # Run detection
+        alert = detector.detect()
+        
+        if alert:
+            return {
+                "success": True,
+                "alert_raised": True,
+                "alert": {
+                    "threat_level": alert.threat_level,
+                    "confidence": float(alert.confidence),
+                    "detected_indicators": alert.detected_indicators,
+                    "affected_files_count": alert.affected_files_count,
+                    "process_name": alert.process_name,
+                    "process_pid": alert.process_pid,
+                    "detection_method": alert.detection_method,
+                    "recommended_action": alert.recommended_action,
+                    "is_backup_safe": alert.backup_safe,
+                    "timestamp": alert.timestamp
+                }
+            }
+        else:
+            return {
+                "success": True,
+                "alert_raised": False,
+                "message": "File activity monitored - no threats detected",
+                "files_tracked": len(file_activities)
+            }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Encryption monitoring error: {str(e)}")
+
+
+@router.get("/layers/status")
+async def get_detection_layers_status():
+    """
+    Get status of all 3 detection layers.
+    
+    Returns health/availability of:
+    - Layer 1: Command Behavior (ML Model)
+    - Layer 2: PE Header Binary (ML Model)
+    - Layer 3: Mass-Encryption Orchestrator
+    """
+    status = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "layers": {
+            "layer1_command_behavior": {
+                "name": "Runtime Command Behavior Detection",
+                "model": "TF-IDF + Random Forest",
+                "status": "ready" if get_ransomware_detection_agent else "unavailable"
+            },
+            "layer2_pe_header": {
+                "name": "Static PE Header Binary Detection",
+                "model": "Gradient Boosting Classifier",
+                "status": "ready",
+                "filtering": "ransomware-only (no generic malware)"
+            },
+            "layer3_mass_encryption": {
+                "name": "Mass-Encryption Orchestrator",
+                "model": "Rule-based threshold analysis",
+                "status": "ready" if MassEncryptionDetector else "unavailable",
+                "features": [
+                    "File modification rate analysis",
+                    "Extension change detection",
+                    "Known ransomware extension matching",
+                    "Shadow copy context analysis",
+                    "Backup-safe filtering"
+                ]
+            }
+        },
+        "overall_status": "operational" if (get_ransomware_detection_agent and MassEncryptionDetector) else "degraded"
+    }
+    
+    return {"success": True, "status": status}

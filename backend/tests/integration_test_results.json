@@ -1,0 +1,24 @@
+{
+  "test_timestamp": "2026-05-06T12:13:40.810014+00:00",
+  "uc04_alignment": {
+    "file_monitoring": "\u2705 Layer 3 - FileActivity tracking",
+    "encryption_detection": "\u2705 Layer 3 - Extension/rate analysis",
+    "confidence_scoring": "\u2705 Layer 1 & 2 - ML confidence scores",
+    "soar_alerting": "\u2705 Layer 3 - Alert generation",
+    "backup_safe": "\u2705 Layer 3 - BackupSafeFilter"
+  },
+  "layer_results": {
+    "layer1_command_behavior": {
+      "status": "RANSOMWARE_DETECTED",
+      "confidence": 0.6248335093516507
+    },
+    "layer2_pe_header": {
+      "status": "BENIGN",
+      "confidence": 0.4362788727515734
+    },
+    "layer3_mass_encryption": {
+      "status": "RANSOMWARE_DETECTED",
+      "alert_raised": true
+    }
+  }
+}
