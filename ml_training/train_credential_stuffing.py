@@ -36,7 +36,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 MAX_ROWS = 200_000
-WINDOW = "5min"
+BUCKET_SIZE = "5min"
 WINDOW_MINUTES = 5
 RANDOM_STATE = 42
 
@@ -180,45 +180,57 @@ def prepare_base_frame(df: pd.DataFrame, mapping: Dict[str, Optional[str]]) -> p
     return prepared.sort_values("timestamp").reset_index(drop=True)
 
 
-def rolling_sum_by_group(df: pd.DataFrame, group_col: str, value_col: str) -> pd.Series:
-    result = pd.Series(0.0, index=df.index)
-    for _, group in df.groupby(group_col, sort=False):
-        rolled = group.set_index("timestamp")[value_col].rolling(WINDOW).sum()
-        result.loc[group.index] = rolled.to_numpy()
-    return result
-
-
-def rolling_nunique_by_group(df: pd.DataFrame, group_col: str, value_col: str) -> pd.Series:
-    result = pd.Series(0.0, index=df.index)
-    for _, group in df.groupby(group_col, sort=False):
-        rolled = (
-            group.set_index("timestamp")[value_col]
-            .rolling(WINDOW)
-            .apply(lambda values: len(set(values)), raw=False)
-        )
-        result.loc[group.index] = rolled.to_numpy()
-    return result
-
-
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     featured = df.copy()
+    featured["timestamp_bucket"] = featured["timestamp"].dt.floor(BUCKET_SIZE)
 
-    # Numeric codes make rolling distinct counts stable and faster than strings.
-    featured["username_code"] = pd.factorize(featured["username"])[0]
-    featured["ip_code"] = pd.factorize(featured["ip_address"])[0]
-    featured["user_agent_code"] = pd.factorize(featured["user_agent"])[0]
-    featured["country_code"] = pd.factorize(featured["country"])[0]
+    ip_bucket_features = (
+        featured.groupby(["ip_address", "timestamp_bucket"], sort=False)
+        .agg(
+            failed_attempts_from_ip=("failed", "sum"),
+            unique_usernames_from_ip=("username", "nunique"),
+            total_attempts_from_ip=("attempt", "sum"),
+            user_agent_variation=("user_agent", "nunique"),
+            country_variation=("country", "nunique"),
+        )
+        .reset_index()
+    )
+    ip_bucket_features["attempts_per_minute"] = (
+        ip_bucket_features["total_attempts_from_ip"] / WINDOW_MINUTES
+    )
+    ip_bucket_features = ip_bucket_features.drop(columns=["total_attempts_from_ip"])
 
-    featured["failed_attempts_from_ip"] = rolling_sum_by_group(featured, "ip_address", "failed")
-    featured["unique_usernames_from_ip"] = rolling_nunique_by_group(featured, "ip_address", "username_code")
-    featured["failed_attempts_for_username"] = rolling_sum_by_group(featured, "username", "failed")
-    featured["unique_ips_for_username"] = rolling_nunique_by_group(
-        featured[featured["failed"] == 1], "username", "ip_code"
-    ).reindex(featured.index, fill_value=0)
-    attempts_from_ip = rolling_sum_by_group(featured, "ip_address", "attempt")
-    featured["attempts_per_minute"] = attempts_from_ip / WINDOW_MINUTES
-    featured["user_agent_variation"] = rolling_nunique_by_group(featured, "ip_address", "user_agent_code")
-    featured["country_variation"] = rolling_nunique_by_group(featured, "ip_address", "country_code")
+    failed_rows = featured[featured["failed"] == 1]
+    username_bucket_features = (
+        failed_rows.groupby(["username", "timestamp_bucket"], sort=False)
+        .agg(
+            failed_attempts_for_username=("failed", "sum"),
+            unique_ips_for_username=("ip_address", "nunique"),
+        )
+        .reset_index()
+    )
+
+    featured = featured.merge(
+        ip_bucket_features,
+        on=["ip_address", "timestamp_bucket"],
+        how="left",
+    )
+    featured = featured.merge(
+        username_bucket_features,
+        on=["username", "timestamp_bucket"],
+        how="left",
+    )
+
+    bucket_feature_columns = [
+        "failed_attempts_from_ip",
+        "unique_usernames_from_ip",
+        "failed_attempts_for_username",
+        "unique_ips_for_username",
+        "attempts_per_minute",
+        "user_agent_variation",
+        "country_variation",
+    ]
+    featured[bucket_feature_columns] = featured[bucket_feature_columns].fillna(0)
     featured["success_after_failures"] = (
         featured["success"] & (featured["failed_attempts_from_ip"] >= 5)
     ).astype(int)
@@ -361,6 +373,7 @@ def main() -> None:
             "Place the Risk-Based Authentication CSV at data/credential_stuffing/rba_dataset.csv"
         )
 
+    print(f"Loading dataset from {dataset_path}")
     df = pd.read_csv(dataset_path)
     detected_columns = list(df.columns)
     print(f"Detected columns ({len(detected_columns)}): {detected_columns}")
@@ -373,8 +386,11 @@ def main() -> None:
     print(f"Column mapping: {mapping}")
     fail_missing_columns(mapping, detected_columns)
 
+    print("Preparing base frame")
     base = prepare_base_frame(df, mapping)
+    print("Engineering bucketed features")
     featured = engineer_features(base)
+    print("Generating labels")
     featured["label"] = generate_weak_labels(featured)
 
     label_counts = featured["label"].value_counts().to_dict()
@@ -403,6 +419,7 @@ def main() -> None:
     trained_models = {}
 
     model_name = "logistic_regression_behavioral"
+    print(f"\nTraining {model_name}")
     model = build_behavioral_logistic_regression()
     model.fit(X_train_behavioral, y_train)
     trained_models[model_name] = {
@@ -412,6 +429,7 @@ def main() -> None:
     }
 
     model_name = "random_forest_behavioral"
+    print(f"\nTraining {model_name}")
     model = build_behavioral_random_forest()
     model.fit(X_train_behavioral, y_train)
     trained_models[model_name] = {
@@ -422,6 +440,7 @@ def main() -> None:
 
     if mapping.get("user_agent") and user_agent_has_signal(featured):
         model_name = "logistic_regression_behavioral_tfidf"
+        print(f"\nTraining {model_name}")
         model = build_behavioral_tfidf_logistic_regression()
         model.fit(X_train_tfidf, y_train)
         trained_models[model_name] = {
@@ -461,6 +480,7 @@ def main() -> None:
             for name, entry in trained_models.items()
         },
     }
+    print("Saving outputs")
     save_outputs(best_entry["model"], metrics)
 
 
