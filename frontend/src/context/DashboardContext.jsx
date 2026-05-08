@@ -25,6 +25,11 @@ import {
   stopDemoMode,
   runDemoBatch,
   fetchActivityLogs,
+  startMalwareDemoMode,
+  stopMalwareDemoMode,
+  getMalwareDemoStatus,
+  runMalwareDemoBatch,
+  clearDashboardFeeds,
 } from "../utils/api";
 
 const DashboardContext = createContext();
@@ -70,6 +75,8 @@ export const DashboardProvider = ({ children }) => {
   const [demoRunning, setDemoRunning] = useState(false);
   const [demoStats, setDemoStats] = useState(null);
   const [activityLogs, setActivityLogs] = useState([]);
+  const [malwareDemoRunning, setMalwareDemoRunning] = useState(false);
+  const [malwareDemoStats, setMalwareDemoStats] = useState(null);
 
   // Polling interval ref
   const pollingRef = useRef(null);
@@ -88,6 +95,7 @@ export const DashboardProvider = ({ children }) => {
         cmData,
         activityData,
         demoStatusData,
+        malwareDemoStatusData,
       ] = await Promise.all([
         fetchStats(),
         fetchThreats(),
@@ -99,6 +107,7 @@ export const DashboardProvider = ({ children }) => {
         fetchConfusionMatrix(),
         fetchActivityLogs(50),
         getDemoStatus(),
+        getMalwareDemoStatus(),
       ]);
 
       // Parse stats from API response
@@ -223,6 +232,12 @@ export const DashboardProvider = ({ children }) => {
         setDemoRunning(demoStatusData.running || false);
         setDemoStats(demoStatusData.stats || null);
       }
+
+      // Set malware demo status
+      if (malwareDemoStatusData) {
+        setMalwareDemoRunning(malwareDemoStatusData.running || false);
+        setMalwareDemoStats(malwareDemoStatusData.stats || null);
+      }
     } catch (error) {
       console.error("Failed to fetch dashboard data", error);
     }
@@ -240,7 +255,7 @@ export const DashboardProvider = ({ children }) => {
 
   // Auto-refresh data every 10 seconds when demo is running (faster refresh for real-time updates)
   useEffect(() => {
-    if (demoRunning) {
+    if (demoRunning || malwareDemoRunning) {
       pollingRef.current = setInterval(async () => {
         await loadData();
       }, 10000); // Reduced to 10 seconds for better real-time updates
@@ -253,7 +268,7 @@ export const DashboardProvider = ({ children }) => {
         clearInterval(pollingRef.current);
       }
     };
-  }, [demoRunning, loadData]);
+  }, [demoRunning, malwareDemoRunning, loadData]);
 
   // Refresh data manually
   const refreshData = useCallback(async () => {
@@ -320,55 +335,109 @@ export const DashboardProvider = ({ children }) => {
     }
   }, []);
 
-  // Run manual batch
+  // Clear dashboard feeds (threats and activity logs from feed, preserve historical data)
+  const clearDashboard = useCallback(async () => {
+    try {
+      // Clear local state for dashboard feeds
+      setLiveThreats([]);
+      setResponseActions([]);
+      setActivityLogs([]);
+      
+      // Note: We don't clear threats array as it contains historical data for detail pages
+      console.log("Dashboard feeds cleared");
+    } catch (error) {
+      console.error("Failed to clear dashboard:", error);
+    }
+  }, []);
+
+  // Run manual batch (phishing + malware)
   const runBatch = useCallback(
     async (count = 5) => {
       try {
-        const result = await runDemoBatch(count);
-        if (result.success) {
-          // Refresh all data including activity logs
-          await loadData();
-          
-          // Also explicitly refresh activity logs for immediate update
-          await refreshActivityLogs();
+        // Clear dashboard before running new batch
+        await clearDashboard();
 
-          // Parse results to populate live threats and response actions
-          if (result.results) {
-            const newThreats = result.results
-              .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
-              .map((r, i) => ({
-                id: r.threat_id || r.incident_id || `demo-${Date.now()}-${i}`,
-                severity: r.severity || r.pipeline_results?.detection?.severity || "MEDIUM",
-                confidence: r.confidence || r.pipeline_results?.detection?.confidence || 0,
-                sender: r.sender || "Unknown",
-                subject: r.subject || "Demo email",
-                detected_at: r.timestamp || new Date().toISOString(),
-              }));
-            setLiveThreats((prev) => [...newThreats, ...prev].slice(0, 20));
-            
-            // Extract response actions from results
-            const newActions = result.results
-              .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
-              .map((r) => {
-                const responseData = r.pipeline_results?.response || {};
-                return {
-                  threat_id: r.threat_id || r.incident_id,
-                  action: responseData.actions_executed?.[0] || "quarantine_email",
-                  actions: r.actions_taken || ["quarantine_email", "block_sender"],
-                  timestamp: r.timestamp || new Date().toISOString(),
-                  status: "completed"
-                };
-              });
-            setResponseActions((prev) => [...newActions, ...prev].slice(0, 20));
-          }
+        // Run both phishing and malware demo batches
+        const [phishingResult, malwareResult] = await Promise.all([
+          runDemoBatch(count),
+          runMalwareDemoBatch(count),
+        ]);
+
+        // Refresh all data including activity logs
+        await loadData();
+        await refreshActivityLogs();
+
+        // Parse phishing results
+        if (phishingResult.success && phishingResult.results) {
+          const newPhishingThreats = phishingResult.results
+            .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
+            .map((r, i) => ({
+              id: r.threat_id || r.incident_id || `demo-phish-${Date.now()}-${i}`,
+              module: "phishing",
+              severity: r.severity || r.pipeline_results?.detection?.severity || "MEDIUM",
+              confidence: r.confidence || r.pipeline_results?.detection?.confidence || 0,
+              sender: r.sender || "Unknown",
+              subject: r.subject || "Demo email",
+              action_taken: r.actions_taken?.[0] || r.pipeline_results?.response?.actions_executed?.[0],
+              detected_at: r.timestamp || new Date().toISOString(),
+            }));
+          setLiveThreats((prev) => [...newPhishingThreats, ...prev].slice(0, 20));
+
+          const newPhishingActions = phishingResult.results
+            .filter((r) => r.is_phishing || r.pipeline_results?.detection?.is_phishing)
+            .map((r) => {
+              const responseData = r.pipeline_results?.response || {};
+              return {
+                threat_id: r.threat_id || r.incident_id,
+                module: "phishing",
+                action: responseData.actions_executed?.[0] || "quarantine_email",
+                actions: r.actions_taken || responseData.actions_executed || ["quarantine_email"],
+                timestamp: r.timestamp || new Date().toISOString(),
+                status: "completed",
+              };
+            });
+          setResponseActions((prev) => [...newPhishingActions, ...prev].slice(0, 20));
         }
-        return result;
+
+        // Parse malware results
+        if (malwareResult.success && malwareResult.results) {
+          const newMalwareThreats = malwareResult.results
+            .filter((r) => r.is_malware || r.pipeline_results?.detection?.is_malware)
+            .map((r, i) => ({
+              id: r.incident_id || r.sample_id || `demo-mal-${Date.now()}-${i}`,
+              module: "malware",
+              severity: r.severity || r.pipeline_results?.detection?.severity || "MEDIUM",
+              confidence: r.confidence || r.pipeline_results?.detection?.confidence || 0,
+              sender: "Malware Scanner",
+              subject: r.filename || "Suspicious file detected",
+              action_taken: r.actions_taken?.[0] || r.pipeline_results?.response?.actions_executed?.[0],
+              detected_at: r.timestamp || new Date().toISOString(),
+            }));
+          setLiveThreats((prev) => [...newMalwareThreats, ...prev].slice(0, 20));
+
+          const newMalwareActions = malwareResult.results
+            .filter((r) => r.is_malware || r.pipeline_results?.detection?.is_malware)
+            .map((r) => {
+              const responseData = r.pipeline_results?.response || {};
+              return {
+                threat_id: r.incident_id || r.sample_id,
+                module: "malware",
+                action: responseData.actions_executed?.[0] || "quarantine_file",
+                actions: r.actions_taken || responseData.actions_executed || ["quarantine_file"],
+                timestamp: r.timestamp || new Date().toISOString(),
+                status: "completed",
+              };
+            });
+          setResponseActions((prev) => [...newMalwareActions, ...prev].slice(0, 20));
+        }
+
+        return { phishing: phishingResult, malware: malwareResult };
       } catch (error) {
         console.error("Failed to run batch:", error);
         throw error;
       }
     },
-    [loadData, refreshActivityLogs]
+    [loadData, refreshActivityLogs, clearDashboard]
   );
 
   // Run automated test
@@ -475,6 +544,10 @@ export const DashboardProvider = ({ children }) => {
     runBatch,
     refreshActivityLogs,
     refreshData,
+    clearDashboard,
+    // Malware demo values
+    malwareDemoRunning,
+    malwareDemoStats,
   };
 
   return (

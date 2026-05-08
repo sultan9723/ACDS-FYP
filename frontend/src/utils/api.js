@@ -542,4 +542,61 @@ export const fetchActivityLogs = async (limit = 50, eventType = null) => {
   }
 };
 
+// ==================== MALWARE DEMO MODE API ====================
+
+export const startMalwareDemoMode = async (intervalSeconds = 300, batchSize = 5) => {
+  try {
+    const response = await api.post("/malware/demo/start", {
+      interval_seconds: intervalSeconds,
+      batch_size: batchSize,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error starting malware demo:", error);
+    throw error.response?.data || { message: "Failed to start malware demo" };
+  }
+};
+
+export const stopMalwareDemoMode = async () => {
+  try {
+    const response = await api.post("/malware/demo/stop");
+    return response.data;
+  } catch (error) {
+    console.error("Error stopping malware demo:", error);
+    throw error.response?.data || { message: "Failed to stop malware demo" };
+  }
+};
+
+export const getMalwareDemoStatus = async () => {
+  try {
+    const response = await api.get("/malware/demo/status");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching malware demo status:", error);
+    return { success: false, running: false };
+  }
+};
+
+export const runMalwareDemoBatch = async (count = 5) => {
+  try {
+    const response = await api.post("/malware/demo/run-batch", { count });
+    return response.data;
+  } catch (error) {
+    console.error("Error running malware demo batch:", error);
+    throw error.response?.data || { message: "Failed to run malware batch" };
+  }
+};
+
+// ==================== DASHBOARD CLEAR API ====================
+
+export const clearDashboardFeeds = async () => {
+  try {
+    const response = await api.post("/dashboard/clear-feeds");
+    return response.data;
+  } catch (error) {
+    console.error("Error clearing dashboard feeds:", error);
+    throw error.response?.data || { message: "Failed to clear dashboard" };
+  }
+};
+
 export default api;
