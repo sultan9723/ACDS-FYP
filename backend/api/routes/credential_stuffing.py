@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 try:
@@ -116,6 +117,25 @@ async def get_credential_stuffing_retraining_data(limit: int = Query(500, ge=1, 
         return service.get_retraining_data(limit=limit)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/report/{alert_id}")
+async def download_credential_stuffing_report(alert_id: str):
+    """Generate and download a PDF incident report for a credential stuffing alert."""
+    try:
+        service = get_credential_stuffing_service()
+        report_path = service.generate_alert_pdf_report(alert_id)
+        return FileResponse(
+            path=str(report_path),
+            media_type="application/pdf",
+            filename=report_path.name,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate credential stuffing PDF report: {e}")
 
 
 @router.post("/simulate-attack")

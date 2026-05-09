@@ -12,6 +12,10 @@ from typing import Any, Dict, List, Optional
 
 import joblib
 import pandas as pd
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 try:
     from database.connection import get_collection
@@ -27,6 +31,7 @@ ALERTS_COLLECTION = "credential_stuffing_alerts"
 RESPONSE_ACTIONS_COLLECTION = "credential_response_actions"
 FEEDBACK_COLLECTION = "credential_analyst_feedback"
 TRAINING_RECORDS_COLLECTION = "credential_training_records"
+REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports" / "credential_stuffing"
 
 WINDOW_MINUTES = 5
 MODEL_FEATURE_COLUMNS = [
@@ -254,6 +259,29 @@ class CredentialStuffingService:
             "records": records,
             "count": len(records),
         }
+
+    def generate_alert_pdf_report(self, alert_id: str) -> Path:
+        self._ensure_indexes()
+
+        alert = self._collection(ALERTS_COLLECTION).find_one({"alert_id": alert_id})
+        if not alert:
+            raise LookupError(f"Alert not found: {alert_id}")
+
+        feedback_doc = None
+        feedback_id = alert.get("feedback_id")
+        if feedback_id:
+            feedback_doc = self._collection(FEEDBACK_COLLECTION).find_one({"feedback_id": feedback_id})
+        if feedback_doc is None:
+            feedback_doc = self._collection(FEEDBACK_COLLECTION).find_one({"alert_id": alert_id})
+
+        try:
+            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            safe_alert_id = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in alert_id)
+            report_path = REPORTS_DIR / f"credential_stuffing_report_{safe_alert_id}.pdf"
+            self._build_pdf_report(report_path, alert, feedback_doc)
+            return report_path
+        except Exception as e:
+            raise RuntimeError(f"Failed to generate credential stuffing PDF report: {e}")
 
     def simulate_attack(self, source_ip: str = "198.51.100.25", username_prefix: str = "demo_user", count: int = 12) -> Dict[str, Any]:
         self._ensure_indexes()
@@ -566,6 +594,95 @@ class CredentialStuffingService:
             "created_at": datetime.now(timezone.utc),
         }
         self._collection(RESPONSE_ACTIONS_COLLECTION).insert_one(action_doc)
+
+    def _build_pdf_report(self, report_path: Path, alert: Dict[str, Any], feedback_doc: Optional[Dict[str, Any]]) -> None:
+        styles = getSampleStyleSheet()
+        story = [
+            Paragraph("ACDS Credential Stuffing Incident Report", styles["Title"]),
+            Spacer(1, 12),
+        ]
+
+        summary_fields = [
+            "alert_id",
+            "event_id",
+            "username",
+            "source_ip",
+            "severity",
+            "confidence",
+            "risk_score",
+            "detection_source",
+            "model_available",
+            "model_prediction",
+            "model_confidence",
+            "recommended_action",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        story.append(Paragraph("Incident Summary", styles["Heading2"]))
+        story.append(self._pdf_table([[field, self._format_pdf_value(alert.get(field))] for field in summary_fields]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Evidence", styles["Heading2"]))
+        evidence = alert.get("evidence") or []
+        evidence_rows = [[str(index + 1), str(item)] for index, item in enumerate(evidence)]
+        story.append(self._pdf_table(evidence_rows or [["-", "No evidence recorded."]]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Behavioral Features", styles["Heading2"]))
+        features = alert.get("features") or {}
+        feature_rows = [[key, self._format_pdf_value(value)] for key, value in features.items()]
+        story.append(self._pdf_table(feature_rows or [["-", "No features recorded."]]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Analyst Feedback", styles["Heading2"]))
+        feedback_rows = self._feedback_pdf_rows(alert, feedback_doc)
+        story.append(self._pdf_table(feedback_rows))
+
+        doc = SimpleDocTemplate(
+            str(report_path),
+            pagesize=letter,
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=36,
+            bottomMargin=36,
+            title="ACDS Credential Stuffing Incident Report",
+        )
+        doc.build(story)
+
+    def _pdf_table(self, rows: List[List[str]]) -> Table:
+        table = Table(rows, colWidths=[160, 340])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+            ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#111827")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        return table
+
+    def _feedback_pdf_rows(self, alert: Dict[str, Any], feedback_doc: Optional[Dict[str, Any]]) -> List[List[str]]:
+        if feedback_doc:
+            serialized_feedback = self._serialize(feedback_doc)
+            return [[key, self._format_pdf_value(value)] for key, value in serialized_feedback.items() if key != "id"]
+        if alert.get("feedback"):
+            return [["feedback", self._format_pdf_value(alert.get("feedback"))]]
+        return [["feedback", "No analyst feedback recorded."]]
+
+    def _format_pdf_value(self, value: Any) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, (dict, list)):
+            return str(value)
+        if value is None:
+            return ""
+        return str(value)
 
     def _severity(self, risk_score: float) -> str:
         if risk_score >= 0.70:
