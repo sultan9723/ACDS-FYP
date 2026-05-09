@@ -51,16 +51,19 @@ app.add_middleware(
 # =============================================================================
 
 # Import route modules
-from api.routes import auth, threats, dashboard, feedback, reports, testing, demo, credential_stuffing
+from api.routes import auth, threats, dashboard, ransomware, malware, feedback, reports, testing, demo, malware_demo, credential_stuffing
 
 # Include routers with /api/v1 prefix
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(threats.router, prefix="/api/v1")
+app.include_router(ransomware.router, prefix="/api/v1")  
+app.include_router(malware.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(testing.router, prefix="/api/v1")
 app.include_router(demo.router, prefix="/api/v1")
+app.include_router(malware_demo.router, prefix="/api/v1")
 app.include_router(credential_stuffing.router, prefix="/api/v1")
 
 
@@ -95,6 +98,8 @@ async def read_root():
             <h2>API Endpoints</h2>
             <ul>
                 <li><code>/api/v1/threats/</code> - Threat detection endpoints</li>
+                <li><code>/api/v1/ransomware/</code> - Ransomware detection endpoints</li>
+                <li><code>/api/v1/malware/</code> - Malware detection endpoints</li>
                 <li><code>/api/v1/dashboard/</code> - Dashboard statistics</li>
                 <li><code>/api/v1/demo/</code> - Demo mode controls</li>
                 <li><code>/api/v1/auth/</code> - Authentication</li>
@@ -147,6 +152,28 @@ async def health_check():
     except Exception as e:
         health_status["components"]["orchestrator"] = f"error: {str(e)}"
     
+    
+    try:
+        from agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
+        ransomware_orchestrator = get_ransomware_orchestrator_agent()
+        if ransomware_orchestrator:
+            health_status["components"]["ransomware_orchestrator"] = "ready"
+        else:
+            health_status["components"]["ransomware_orchestrator"] = "not_ready"
+    except Exception as e:
+        health_status["components"]["ransomware_orchestrator"] = f"error: {str(e)}"
+
+    try:
+        from agents.malware_orchestrator_agent import get_malware_orchestrator_agent
+        malware_orchestrator = get_malware_orchestrator_agent()
+        if malware_orchestrator:
+            health_status["components"]["malware_orchestrator"] = "ready"
+        else:
+            health_status["components"]["malware_orchestrator"] = "not_ready"
+    except Exception as e:
+        health_status["components"]["malware_orchestrator"] = f"error: {str(e)}"
+
+    
     return health_status
 
 
@@ -191,6 +218,26 @@ async def startup_event():
             logger.warning("⚠️ Orchestrator Agent not initialized")
     except Exception as e:
         logger.error(f"❌ Error initializing orchestrator: {e}")
+
+    try:
+        from agents.ransomware_orchestrator_agent import get_ransomware_orchestrator_agent
+        ransomware_orchestrator = get_ransomware_orchestrator_agent()
+        if ransomware_orchestrator:
+            logger.info("✅ Ransomware Orchestrator Agent initialized")
+        else:
+            logger.warning("⚠️ Ransomware Orchestrator Agent not initialized")
+    except Exception as e:
+        logger.error(f"❌ Error initializing ransomware orchestrator: {e}")
+
+    try:
+        from agents.malware_orchestrator_agent import get_malware_orchestrator_agent
+        malware_orchestrator = get_malware_orchestrator_agent()
+        if malware_orchestrator:
+            logger.info("✅ Malware Orchestrator Agent initialized")
+        else:
+            logger.warning("⚠️ Malware Orchestrator Agent not initialized")
+    except Exception as e:
+        logger.error(f"❌ Error initializing malware orchestrator: {e}")
     
     logger.info("🛡️ ACDS Backend is ready!")
 
@@ -209,7 +256,16 @@ async def shutdown_event():
             logger.info("✅ Demo scheduler stopped")
     except Exception as e:
         logger.warning(f"⚠️ Error stopping demo scheduler: {e}")
-    
+
+    try:
+        from services.malware_demo_scheduler import get_malware_demo_scheduler
+        malware_scheduler = get_malware_demo_scheduler()
+        if malware_scheduler.running:
+            await malware_scheduler.stop()
+            logger.info("✅ Malware demo scheduler stopped")
+    except Exception as e:
+        logger.warning(f"⚠️ Error stopping malware demo scheduler: {e}")
+
     logger.info("👋 ACDS Backend shutdown complete")
 
 
@@ -225,3 +281,6 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
+
+

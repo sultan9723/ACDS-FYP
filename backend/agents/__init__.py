@@ -45,6 +45,12 @@ from .response_agent import (
     get_response_agent
 )
 
+from .malware_detection_agent import get_malware_detection_agent
+from .malware_explainability_agent import get_malware_explainability_agent
+from .malware_orchestrator_agent import get_malware_orchestrator_agent
+from .malware_response_agent import get_malware_response_agent
+from .malware_report_agent import get_malware_report_agent
+
 # Legacy agents (kept for backward compatibility)
 # Using try/except to handle missing dependencies
 try:
@@ -81,6 +87,13 @@ __all__ = [
     'get_explainability_agent',
     'get_orchestrator_agent',
     'get_response_agent',
+
+    # Malware singleton getters
+    'get_malware_detection_agent',
+    'get_malware_explainability_agent',
+    'get_malware_orchestrator_agent',
+    'get_malware_response_agent',
+    'get_malware_report_agent',
     
     # Legacy
     'AlertAgent',

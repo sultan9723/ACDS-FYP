@@ -247,6 +247,81 @@ export const getFeedbackSummary = async () => {
   }
 };
 
+// ==================== CREDENTIAL STUFFING API ====================
+
+export const getCredentialStuffingHealth = async () => {
+  try {
+    const response = await api.get("/credential-stuffing/health");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing health:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing health" };
+  }
+};
+
+export const submitCredentialLoginEvent = async (eventData) => {
+  try {
+    const response = await api.post("/credential-stuffing/login-event", eventData);
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting credential login event:", error);
+    throw error.response?.data || { message: "Failed to submit login event" };
+  }
+};
+
+export const analyzeCredentialStuffingEvents = async (events) => {
+  try {
+    const response = await api.post("/credential-stuffing/analyze", { events });
+    return response.data;
+  } catch (error) {
+    console.error("Error analyzing credential stuffing events:", error);
+    throw error.response?.data || { message: "Failed to analyze credential stuffing events" };
+  }
+};
+
+export const simulateCredentialStuffingAttack = async (options = {}) => {
+  try {
+    const response = await api.post("/credential-stuffing/simulate-attack", options);
+    return response.data;
+  } catch (error) {
+    console.error("Error simulating credential stuffing attack:", error);
+    throw error.response?.data || { message: "Failed to simulate credential stuffing attack" };
+  }
+};
+
+export const getCredentialStuffingAlerts = async (params = {}) => {
+  try {
+    const response = await api.get("/credential-stuffing/alerts", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing alerts:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing alerts" };
+  }
+};
+
+export const submitCredentialStuffingFeedback = async (feedbackData) => {
+  try {
+    const response = await api.post("/credential-stuffing/feedback", feedbackData);
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting credential stuffing feedback:", error);
+    throw error.response?.data || { message: "Failed to submit credential stuffing feedback" };
+  }
+};
+
+export const getCredentialStuffingRetrainingData = async (params = {}) => {
+  try {
+    const response = await api.get("/credential-stuffing/retraining-data", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing retraining data:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing retraining data" };
+  }
+};
+
+export const getCredentialStuffingReportUrl = (alertId) =>
+  `${API_URL}/credential-stuffing/report/${alertId}`;
+
 // ==================== REPORTS API ====================
 
 export const generateReport = async (reportType, options = {}) => {
@@ -539,6 +614,63 @@ export const fetchActivityLogs = async (limit = 50, eventType = null) => {
   } catch (error) {
     console.error("Error fetching activity logs:", error);
     return { logs: [], count: 0 };
+  }
+};
+
+// ==================== MALWARE DEMO MODE API ====================
+
+export const startMalwareDemoMode = async (intervalSeconds = 300, batchSize = 5) => {
+  try {
+    const response = await api.post("/malware/demo/start", {
+      interval_seconds: intervalSeconds,
+      batch_size: batchSize,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error starting malware demo:", error);
+    throw error.response?.data || { message: "Failed to start malware demo" };
+  }
+};
+
+export const stopMalwareDemoMode = async () => {
+  try {
+    const response = await api.post("/malware/demo/stop");
+    return response.data;
+  } catch (error) {
+    console.error("Error stopping malware demo:", error);
+    throw error.response?.data || { message: "Failed to stop malware demo" };
+  }
+};
+
+export const getMalwareDemoStatus = async () => {
+  try {
+    const response = await api.get("/malware/demo/status");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching malware demo status:", error);
+    return { success: false, running: false };
+  }
+};
+
+export const runMalwareDemoBatch = async (count = 5) => {
+  try {
+    const response = await api.post("/malware/demo/run-batch", { count });
+    return response.data;
+  } catch (error) {
+    console.error("Error running malware demo batch:", error);
+    throw error.response?.data || { message: "Failed to run malware batch" };
+  }
+};
+
+// ==================== DASHBOARD CLEAR API ====================
+
+export const clearDashboardFeeds = async () => {
+  try {
+    const response = await api.post("/dashboard/clear-feeds");
+    return response.data;
+  } catch (error) {
+    console.error("Error clearing dashboard feeds:", error);
+    throw error.response?.data || { message: "Failed to clear dashboard" };
   }
 };
 
