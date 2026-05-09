@@ -63,11 +63,8 @@ app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(testing.router, prefix="/api/v1")
 app.include_router(demo.router, prefix="/api/v1")
-<<<<<<< HEAD
-app.include_router(credential_stuffing.router, prefix="/api/v1")
-=======
 app.include_router(malware_demo.router, prefix="/api/v1")
->>>>>>> origin/develop
+app.include_router(credential_stuffing.router, prefix="/api/v1")
 
 
 # =============================================================================
@@ -284,5 +281,6 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+
 
 
