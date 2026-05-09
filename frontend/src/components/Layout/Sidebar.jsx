@@ -8,6 +8,7 @@ import {
   LogOut,
   Shield,
   Bug,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useAuth } from "../../context/AuthContext";
@@ -21,6 +22,7 @@ const Sidebar = () => {
     { icon: ShieldAlert,     label: "Email Phishing", path: "/dashboard/phishing" },
     { icon: Bug,             label: "Ransomware",     path: "/dashboard/ransomware" },
     { icon: ShieldAlert,     label: "Malware",        path: "/dashboard/malware" },
+    { icon: KeyRound,        label: "Credential Stuffing", path: "/dashboard/credential-stuffing" },
     { icon: Sparkles,        label: "AI Reports",     path: "/dashboard/reports" },
     { icon: FileText,        label: "Logs",           path: "/dashboard/logs" },
   ];
