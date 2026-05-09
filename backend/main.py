@@ -51,7 +51,7 @@ app.add_middleware(
 # =============================================================================
 
 # Import route modules
-from api.routes import auth, threats, dashboard, ransomware, malware, feedback, reports, testing, demo, malware_demo
+from api.routes import auth, threats, dashboard, ransomware, malware, feedback, reports, testing, demo, malware_demo, credential_stuffing
 
 # Include routers with /api/v1 prefix
 app.include_router(auth.router, prefix="/api/v1")
@@ -64,6 +64,7 @@ app.include_router(reports.router, prefix="/api/v1")
 app.include_router(testing.router, prefix="/api/v1")
 app.include_router(demo.router, prefix="/api/v1")
 app.include_router(malware_demo.router, prefix="/api/v1")
+app.include_router(credential_stuffing.router, prefix="/api/v1")
 
 
 # =============================================================================

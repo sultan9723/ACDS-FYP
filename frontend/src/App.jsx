@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import PhishingModule from "./pages/PhishingModule";
 import RansomwareModule from "./pages/RansomwareModule";
 import MalwareModule from "./pages/MalwareModule";
+import CredentialStuffingModule from "./pages/CredentialStuffingModule";
 import Logs from "./pages/Logs";
 import Login from "./pages/Login";
 import Reports from "./pages/Reports";
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="phishing" element={<PhishingModule />} />
         <Route path="ransomware" element={<RansomwareModule />} />
         <Route path="malware" element={<MalwareModule />} />
+        <Route path="credential-stuffing" element={<CredentialStuffingModule />} />
         <Route path="logs" element={<Logs />} />
         <Route path="reports" element={<Reports />} />
       </Route>

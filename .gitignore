@@ -216,3 +216,8 @@ reports/*.pdf
 # Temporary quickstart script
 run_quickstart.py
 
+
+# Credential Stuffing local dataset and generated model
+data/credential_stuffing/*.csv
+data/credential_stuffing/*.zip
+models/credential_stuffing_model.joblib

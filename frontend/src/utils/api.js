@@ -247,6 +247,81 @@ export const getFeedbackSummary = async () => {
   }
 };
 
+// ==================== CREDENTIAL STUFFING API ====================
+
+export const getCredentialStuffingHealth = async () => {
+  try {
+    const response = await api.get("/credential-stuffing/health");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing health:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing health" };
+  }
+};
+
+export const submitCredentialLoginEvent = async (eventData) => {
+  try {
+    const response = await api.post("/credential-stuffing/login-event", eventData);
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting credential login event:", error);
+    throw error.response?.data || { message: "Failed to submit login event" };
+  }
+};
+
+export const analyzeCredentialStuffingEvents = async (events) => {
+  try {
+    const response = await api.post("/credential-stuffing/analyze", { events });
+    return response.data;
+  } catch (error) {
+    console.error("Error analyzing credential stuffing events:", error);
+    throw error.response?.data || { message: "Failed to analyze credential stuffing events" };
+  }
+};
+
+export const simulateCredentialStuffingAttack = async (options = {}) => {
+  try {
+    const response = await api.post("/credential-stuffing/simulate-attack", options);
+    return response.data;
+  } catch (error) {
+    console.error("Error simulating credential stuffing attack:", error);
+    throw error.response?.data || { message: "Failed to simulate credential stuffing attack" };
+  }
+};
+
+export const getCredentialStuffingAlerts = async (params = {}) => {
+  try {
+    const response = await api.get("/credential-stuffing/alerts", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing alerts:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing alerts" };
+  }
+};
+
+export const submitCredentialStuffingFeedback = async (feedbackData) => {
+  try {
+    const response = await api.post("/credential-stuffing/feedback", feedbackData);
+    return response.data;
+  } catch (error) {
+    console.error("Error submitting credential stuffing feedback:", error);
+    throw error.response?.data || { message: "Failed to submit credential stuffing feedback" };
+  }
+};
+
+export const getCredentialStuffingRetrainingData = async (params = {}) => {
+  try {
+    const response = await api.get("/credential-stuffing/retraining-data", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching credential stuffing retraining data:", error);
+    throw error.response?.data || { message: "Failed to fetch credential stuffing retraining data" };
+  }
+};
+
+export const getCredentialStuffingReportUrl = (alertId) =>
+  `${API_URL}/credential-stuffing/report/${alertId}`;
+
 // ==================== REPORTS API ====================
 
 export const generateReport = async (reportType, options = {}) => {
