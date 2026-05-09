@@ -264,29 +264,54 @@ async def get_activity_logs(
                 cursor = logs_col.find(query).sort("timestamp", -1).limit(limit)
                 logs = []
                 for log in cursor:
+                    module = str(log.get("module") or ("malware" if "malware" in str(log.get("event", "")).lower() else "phishing")).lower()
+                    event = log.get("event", "unknown")
+                    is_malware = bool(log.get("is_malware", False))
+                    is_phishing = bool(log.get("is_phishing", False))
+                    is_threat = bool(log.get("is_threat", is_malware or is_phishing or event in {"threat_detected", "threat_resolved"}))
+                    confidence = log.get("confidence", 0)
+                    filename = log.get("filename") or log.get("file_name")
+                    subject = log.get("email_subject") or filename or "No subject"
+                    source_value = log.get("sender") or filename or "Unknown"
+                    actions = log.get("actions") or log.get("actions_executed") or ([] if not log.get("action_taken") else [log.get("action_taken")])
+
                     log_entry = {
                         "id": str(log.get("_id")),
-                        "event": log.get("event", "unknown"),
-                        "action_type": log.get("action_type", log.get("event", "unknown")),
-                        "message": log.get("message") or log.get("email_subject", "Activity logged"),
+                        "event": event,
+                        "action_type": log.get("action_type", event),
+                        "module": module,
+                        "threat_type": log.get("threat_type", module),
+                        "message": log.get("message") or subject or "Activity logged",
                         "session_id": log.get("session_id"),
-                        "subject": log.get("email_subject", "No subject"),
-                        "sender": log.get("sender", "Unknown"),
-                        "is_phishing": log.get("is_phishing", False),
-                        "confidence": log.get("confidence", 0),
+                        "subject": subject,
+                        "sender": source_value,
+                        "source": source_value,
+                        "filename": filename,
+                        "is_threat": is_threat,
+                        "is_phishing": is_phishing,
+                        "is_malware": is_malware,
+                        "confidence": confidence,
                         "severity": log.get("severity", "LOW"),
                         "threat_id": log.get("threat_id"),
-                        "actions": log.get("actions", []),
+                        "actions": actions,
+                        "action_taken": log.get("action_taken") or (actions[0] if actions else None),
                         "details": {
-                            "is_phishing": log.get("is_phishing"),
-                            "confidence": log.get("confidence"),
+                            "module": module,
+                            "is_threat": is_threat,
+                            "is_phishing": is_phishing,
+                            "is_malware": is_malware,
+                            "confidence": confidence,
                             "severity": log.get("severity"),
-                            "sender": log.get("sender"),
-                            "subject": log.get("email_subject"),
+                            "sender": source_value,
+                            "subject": subject,
+                            "filename": filename,
                             "threat_id": log.get("threat_id"),
-                            "actions": log.get("actions", []),
+                            "actions": actions,
+                            "action_taken": log.get("action_taken") or (actions[0] if actions else None),
                             "emails_processed": log.get("emails_processed"),
+                            "samples_processed": log.get("samples_processed"),
                             "phishing_detected": log.get("phishing_detected"),
+                            "malware_detected": log.get("malware_detected"),
                             "expected": log.get("expected")
                         },
                         "timestamp": log.get("timestamp").isoformat() if log.get("timestamp") else datetime.now(timezone.utc).isoformat()
@@ -336,15 +361,41 @@ async def get_recent_threats(
                 cursor = collection.find(query).sort("detected_at", -1).limit(limit)
                 threats = []
                 for threat in cursor:
+                    threat_type = (threat.get("threat_type") or "Phishing").lower()
+                    is_malware = threat_type == "malware"
+                    file_name = threat.get("filename") or threat.get("file_name") or "unknown"
+                    prediction = threat.get("prediction") or ("Malware" if is_malware else "Phishing")
+                    action_taken = threat.get("action_taken") or "alert"
+                    timestamp_value = (
+                        threat.get("detected_at")
+                        or threat.get("timestamp")
+                        or datetime.now(timezone.utc)
+                    )
+
+                    if hasattr(timestamp_value, "isoformat"):
+                        detected_at = timestamp_value.isoformat()
+                    else:
+                        detected_at = str(timestamp_value)
+
                     threats.append({
                         "id": threat.get("threat_id", str(threat.get("_id"))),
                         "type": threat.get("threat_type", "Phishing"),
+                        "module": "malware" if is_malware else "phishing",
                         "severity": threat.get("severity", "MEDIUM"),
                         "confidence": threat.get("confidence", 0),
                         "status": threat.get("status", "active").title(),
-                        "source": threat.get("email_sender", "unknown"),
-                        "detected_at": threat.get("detected_at").isoformat() if threat.get("detected_at") else datetime.now(timezone.utc).isoformat(),
-                        "description": threat.get("email_subject") or "Suspicious email detected"
+                        "source": file_name if is_malware else threat.get("email_sender", "unknown"),
+                        "subject": file_name if is_malware else (threat.get("email_subject") or "Suspicious email detected"),
+                        "is_malware": is_malware,
+                        "is_phishing": not is_malware,
+                        "action_taken": action_taken,
+                        "actions": threat.get("actions_executed") or ([action_taken] if action_taken else []),
+                        "detected_at": detected_at,
+                        "description": (
+                            f"{prediction} file detected: {file_name} | action: {action_taken}"
+                            if is_malware
+                            else (threat.get("email_subject") or "Suspicious email detected")
+                        )
                     })
                 
                 if threats:

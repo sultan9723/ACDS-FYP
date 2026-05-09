@@ -19,6 +19,11 @@ const ThreatResponseFeed = () => {
     ? responseActions
     : [];
 
+  // Calculate threat breakdown
+  const phishingCount = safeLiveThreats.filter(t => t?.module === 'phishing').length;
+  const malwareCount = safeLiveThreats.filter(t => t?.module === 'malware').length;
+  const ransomwareCount = safeLiveThreats.filter(t => t?.module === 'ransomware').length;
+
   // Combine threats and responses into a timeline
   const timelineItems = [];
 
@@ -64,15 +69,41 @@ const ThreatResponseFeed = () => {
   const getSeverityColor = (severity) => {
     switch (severity?.toUpperCase()) {
       case "CRITICAL":
-        return "text-red-500 bg-red-500/20";
+        return "text-red-500 bg-red-500/20 border border-red-500/30";
       case "HIGH":
-        return "text-orange-500 bg-orange-500/20";
+        return "text-orange-500 bg-orange-500/20 border border-orange-500/30";
       case "MEDIUM":
-        return "text-yellow-500 bg-yellow-500/20";
+        return "text-yellow-500 bg-yellow-500/20 border border-yellow-500/30";
       case "LOW":
-        return "text-green-500 bg-green-500/20";
+        return "text-green-500 bg-green-500/20 border border-green-500/30";
       default:
-        return "text-slate-400 bg-slate-500/20";
+        return "text-slate-400 bg-slate-500/20 border border-slate-500/30";
+    }
+  };
+
+  const getModuleColor = (module) => {
+    switch (module?.toLowerCase()) {
+      case "phishing":
+        return "bg-blue-500/20 text-blue-400 border border-blue-500/40";
+      case "malware":
+        return "bg-purple-500/20 text-purple-400 border border-purple-500/40";
+      case "ransomware":
+        return "bg-red-500/20 text-red-400 border border-red-500/40";
+      default:
+        return "bg-slate-500/20 text-slate-400 border border-slate-500/40";
+    }
+  };
+
+  const getModuleIcon = (module) => {
+    switch (module?.toLowerCase()) {
+      case "phishing":
+        return "📧";
+      case "malware":
+        return "🦠";
+      case "ransomware":
+        return "🔒";
+      default:
+        return "⚠️";
     }
   };
 
@@ -125,6 +156,30 @@ const ThreatResponseFeed = () => {
         </div>
       </div>
 
+      {/* Threat Breakdown Summary */}
+      {safeLiveThreats.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-5 p-4 bg-slate-800/40 rounded-lg border border-slate-700/30">
+          <div className="text-center">
+            <div className="text-xs text-slate-500 mb-1.5 uppercase tracking-wide">Phishing</div>
+            <div className="text-2xl font-bold text-blue-400 flex items-center justify-center gap-1">
+              📧 {phishingCount}
+            </div>
+          </div>
+          <div className="text-center border-x border-slate-700/50">
+            <div className="text-xs text-slate-500 mb-1.5 uppercase tracking-wide">Malware</div>
+            <div className="text-2xl font-bold text-purple-400 flex items-center justify-center gap-1">
+              🦠 {malwareCount}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-slate-500 mb-1.5 uppercase tracking-wide">Ransomware</div>
+            <div className="text-2xl font-bold text-red-400 flex items-center justify-center gap-1">
+              🔒 {ransomwareCount}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Timeline */}
       {timelineItems.length > 0 ? (
         <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
@@ -157,22 +212,32 @@ const ThreatResponseFeed = () => {
                     <p className="text-xs text-slate-400 mt-1">
                       From: {item.data.sender}
                     </p>
-                    <div className="flex items-center space-x-3 mt-2">
+                    <div className="flex items-center flex-wrap gap-2 mt-3">
+                      <span className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getModuleColor(item.data.module || item.data.type || "phishing")}`}>
+                        {getModuleIcon(item.data.module || item.data.type || "phishing")} {item.data.module || item.data.type || "phishing"}
+                      </span>
                       <span
-                        className={`text-xs px-2 py-1 rounded ${getSeverityColor(
+                        className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getSeverityColor(
                           item.data.severity
                         )}`}
                       >
                         {item.data.severity}
                       </span>
-                      <span className="text-xs text-slate-500">
-                        Confidence:{" "}
-                        {Math.round((item.data.confidence || 0) * 100)}%
-                      </span>
-                      <span className="text-xs text-slate-600">
-                        ID: {item.data.id}
+                      <span className="text-xs px-2.5 py-1 bg-slate-700/50 text-slate-300 rounded-md border border-slate-600/50">
+                        🎯 {Math.round((item.data.confidence || 0) * 100)}%
                       </span>
                     </div>
+                    <div className="text-xs text-slate-600 mt-2 font-mono">
+                      ID: {item.data.id}
+                    </div>
+                    {item.data.action_taken && (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <span className="text-xs text-green-400">✓ Action:</span>
+                        <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">
+                          {String(item.data.action_taken).replace(/_/g, " ")}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -194,6 +259,11 @@ const ThreatResponseFeed = () => {
                     <p className="text-xs text-slate-400 mb-2">
                       Threat ID: {item.data.threat_id}
                     </p>
+                    <div className="mb-2">
+                      <span className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getModuleColor(item.data.module || "phishing")}`}>
+                        {getModuleIcon(item.data.module || "phishing")} {item.data.module || "phishing"}
+                      </span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {(item.data.actions || []).map((action, actionIdx) => (
                         <span

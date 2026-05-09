@@ -97,7 +97,7 @@ class IncidentReportGenerator:
         pipeline_results: Dict[str, Any] = None
     ) -> Optional[IncidentReport]:
         """
-        Generate a PDF incident report for a detected threat.
+        Generate a professionally structured PDF incident report for any detected threat.
         
         Args:
             threat_data: Dictionary containing threat information
@@ -113,47 +113,61 @@ class IncidentReportGenerator:
         try:
             # Generate unique report ID
             report_id = f"RPT-{uuid.uuid4().hex[:8].upper()}"
-            threat_id = threat_data.get("threat_id", f"THR-{uuid.uuid4().hex[:8].upper()}")
+            threat_id = threat_data.get("threat_id", threat_data.get("incident_id", f"THR-{uuid.uuid4().hex[:8].upper()}"))
             
-            # Generate filename with timestamp
+            # Detect threat type from data
+            threat_type = self._detect_threat_type(threat_data, pipeline_results)
+            
+            # Generate filename with threat ID (use existing format if provided)
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            filename = f"incident_report_{threat_id}_{timestamp}.pdf"
+            filename = f"incident_report_{threat_id}.pdf"
             filepath = os.path.join(self.reports_dir, filename)
             
-            # Extract threat details
+            # Extract common threat details
+            detected_at = threat_data.get("detected_at", threat_data.get("timestamp", datetime.now(timezone.utc).isoformat()))
             severity = threat_data.get("severity", "MEDIUM")
             confidence = threat_data.get("confidence", 0)
-            email_subject = threat_data.get("email_subject", threat_data.get("subject", "No Subject"))
-            email_sender = threat_data.get("email_sender", threat_data.get("sender", "Unknown"))
-            email_content = threat_data.get("email_preview", threat_data.get("content", ""))[:500]
-            status = threat_data.get("status", "resolved")
-            actions_taken = threat_data.get("actions_taken", ["quarantine_email", "block_sender"])
+            status = threat_data.get("status", "Resolved")
             
             # Extract pipeline results if available
             detection_result = {}
             explainability_result = {}
             response_result = {}
+            report_result = {}
             
             if pipeline_results:
                 detection_result = pipeline_results.get("detection", {})
                 explainability_result = pipeline_results.get("explainability", {})
                 response_result = pipeline_results.get("response", {})
+                report_result = pipeline_results.get("report", {})
+            
+            # Extract actions taken
+            actions_taken = (
+                threat_data.get("actions_taken", []) or
+                response_result.get("actions_executed", []) or
+                [threat_data.get("action_taken")] if threat_data.get("action_taken") else
+                ["alert_generated"]
+            )
+            
+            # Extract threat-specific details based on type
+            threat_details = self._extract_threat_details(threat_data, threat_type, detection_result)
             
             # Generate PDF
             self._create_pdf_report(
                 filepath=filepath,
                 report_id=report_id,
                 threat_id=threat_id,
+                threat_type=threat_type,
+                detected_at=detected_at,
                 severity=severity,
                 confidence=confidence,
-                email_subject=email_subject,
-                email_sender=email_sender,
-                email_content=email_content,
                 status=status,
                 actions_taken=actions_taken,
+                threat_details=threat_details,
                 detection_result=detection_result,
                 explainability_result=explainability_result,
-                response_result=response_result
+                response_result=response_result,
+                report_result=report_result
             )
             
             # Create report metadata
@@ -163,11 +177,11 @@ class IncidentReportGenerator:
                 filename=filename,
                 filepath=filepath,
                 generated_at=datetime.now(timezone.utc).isoformat(),
-                threat_type="Phishing",
+                threat_type=threat_type,
                 severity=severity,
                 confidence=confidence,
-                email_subject=email_subject,
-                email_sender=email_sender,
+                email_subject=threat_details.get("subject", "N/A"),
+                email_sender=threat_details.get("source", "Unknown"),
                 status=status
             )
             
@@ -183,7 +197,8 @@ class IncidentReportGenerator:
                 "confidence": report.confidence,
                 "email_subject": report.email_subject,
                 "email_sender": report.email_sender,
-                "status": report.status
+                "status": report.status,
+                "detected_at": detected_at
             }
             self._reports_metadata.append(report_dict)
             self._save_metadata()
@@ -191,7 +206,7 @@ class IncidentReportGenerator:
             # Also store to database
             self._store_report_to_db(report_dict)
             
-            print(f"✅ Generated incident report: {filename}")
+            print(f"✅ Generated {threat_type} incident report: {filename}")
             return report
             
         except Exception as e:
@@ -200,26 +215,98 @@ class IncidentReportGenerator:
             traceback.print_exc()
             return None
     
+    def _detect_threat_type(self, threat_data: Dict[str, Any], pipeline_results: Dict[str, Any] = None) -> str:
+        """Detect the type of threat from the data."""
+        # Check explicit type field
+        if "type" in threat_data:
+            threat_type = str(threat_data["type"]).lower()
+            if "malware" in threat_type:
+                return "Malware"
+            elif "ransomware" in threat_type:
+                return "Ransomware"
+            elif "phishing" in threat_type:
+                return "Phishing"
+        
+        # Check for malware indicators
+        if any(key in threat_data for key in ["filename", "file_hash", "file_type", "sample_id"]):
+            return "Malware"
+        
+        # Check for ransomware indicators
+        if any(key in threat_data for key in ["command", "process_name", "source_host"]):
+            return "Ransomware"
+        
+        # Check pipeline results
+        if pipeline_results:
+            detection = pipeline_results.get("detection", {})
+            if detection.get("threat_type"):
+                return detection["threat_type"].title()
+        
+        # Default to phishing
+        return "Phishing"
+    
+    def _extract_threat_details(self, threat_data: Dict[str, Any], threat_type: str, detection_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract threat-specific details based on type."""
+        details = {}
+        
+        if threat_type == "Phishing":
+            details["subject"] = threat_data.get("email_subject", threat_data.get("subject", "No Subject"))
+            details["source"] = threat_data.get("email_sender", threat_data.get("sender", "Unknown"))
+            details["recipient"] = threat_data.get("recipient", "N/A")
+            details["content_preview"] = threat_data.get("email_preview", threat_data.get("content", ""))[:500]
+            details["email_id"] = threat_data.get("email_id", "N/A")
+            
+        elif threat_type == "Malware":
+            details["subject"] = threat_data.get("filename", "Unknown File")
+            details["source"] = "File System Scan"
+            details["file_hash"] = threat_data.get("file_hash", "N/A")
+            details["file_size"] = threat_data.get("file_size", 0)
+            details["file_type"] = threat_data.get("file_type", "Unknown")
+            details["sample_id"] = threat_data.get("sample_id", "N/A")
+            details["model_used"] = detection_result.get("model_used", "behavioral_analysis")
+            
+        elif threat_type == "Ransomware":
+            details["subject"] = threat_data.get("command", "Suspicious Command")
+            details["source"] = threat_data.get("source_host", "Unknown Host")
+            details["process_name"] = threat_data.get("process_name", "N/A")
+            details["user"] = threat_data.get("user", "N/A")
+            details["command_id"] = threat_data.get("command_id", "N/A")
+            details["behavior_categories"] = threat_data.get("behavior_categories", [])
+        
+        return details
+    
     def _create_pdf_report(
         self,
         filepath: str,
         report_id: str,
         threat_id: str,
+        threat_type: str,
+        detected_at: str,
         severity: str,
         confidence: float,
-        email_subject: str,
-        email_sender: str,
-        email_content: str,
         status: str,
         actions_taken: List[str],
+        threat_details: Dict[str, Any],
         detection_result: Dict,
         explainability_result: Dict,
-        response_result: Dict
+        response_result: Dict,
+        report_result: Dict
     ):
-        """Create the actual PDF report file."""
+        """Create a professionally structured PDF report file."""
         doc = SimpleDocTemplate(filepath, pagesize=letter, topMargin=0.5*inch, bottomMargin=0.5*inch)
         styles = getSampleStyleSheet()
         story = []
+        
+        # Parse detected_at timestamp
+        try:
+            if isinstance(detected_at, str):
+                dt = datetime.fromisoformat(detected_at.replace('Z', '+00:00'))
+            else:
+                dt = datetime.now(timezone.utc)
+        except:
+            dt = datetime.now(timezone.utc)
+        
+        detection_date = dt.strftime("%B %d, %Y")
+        detection_time = dt.strftime("%H:%M:%S UTC")
         
         # Custom styles
         title_style = ParagraphStyle(
@@ -252,18 +339,22 @@ class IncidentReportGenerator:
         }
         severity_color = severity_colors.get(severity.upper(), colors.gray)
         
-        # Title
-        story.append(Paragraph("🛡️ PHISHING INCIDENT REPORT", title_style))
+        # Title with threat type
+        threat_icons = {"Phishing": "📧", "Malware": "🦠", "Ransomware": "🔒"}
+        icon = threat_icons.get(threat_type, "⚠️")
+        story.append(Paragraph(f"{icon} {threat_type.upper()} INCIDENT REPORT", title_style))
         story.append(Paragraph("Autonomous Cyber Defense System (ACDS)", 
                                ParagraphStyle('Subtitle', parent=normal_style, alignment=TA_CENTER, textColor=colors.gray)))
-        story.append(Spacer(1, 0.3 * inch))
+        story.append(Spacer(1, 0.2 * inch))
         
-        # Report Info Box
+        # Report Info Box - Clean and Professional
         report_info = [
             ["Report ID:", report_id],
             ["Threat ID:", threat_id],
-            ["Generated:", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")],
-            ["Status:", status.upper()]
+            ["Detection Date:", detection_date],
+            ["Detection Time:", detection_time],
+            ["Report Generated:", datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M:%S UTC")],
+            ["Status:", status.title()]
         ]
         
         info_table = Table(report_info, colWidths=[1.5*inch, 5*inch])
@@ -285,13 +376,35 @@ class IncidentReportGenerator:
         # Format confidence
         conf_display = f"{confidence:.1f}%" if confidence > 1 else f"{confidence*100:.1f}%"
         
+        # Build threat data based on type
         threat_data = [
-            ["Threat Type:", "Phishing Email"],
-            ["Severity:", severity.upper()],
-            ["Confidence:", conf_display],
-            ["Email Subject:", email_subject[:60] + "..." if len(email_subject) > 60 else email_subject],
-            ["Email Sender:", email_sender]
+            ["Threat Type:", threat_type],
+            ["Severity Level:", severity.upper()],
+            ["Detection Confidence:", conf_display],
         ]
+        
+        # Add type-specific fields
+        if threat_type == "Phishing":
+            subject = threat_details.get("subject", "N/A")
+            threat_data.append(["Email Subject:", subject[:70] + "..." if len(subject) > 70 else subject])
+            threat_data.append(["Sender Address:", threat_details.get("source", "Unknown")])
+            threat_data.append(["Recipient:", threat_details.get("recipient", "N/A")])
+            threat_data.append(["Email ID:", threat_details.get("email_id", "N/A")])
+            
+        elif threat_type == "Malware":
+            threat_data.append(["File Name:", threat_details.get("subject", "Unknown")])
+            threat_data.append(["File Hash (SHA256):", threat_details.get("file_hash", "N/A")])
+            threat_data.append(["File Size:", f"{threat_details.get('file_size', 0):,} bytes"])
+            threat_data.append(["File Type:", threat_details.get("file_type", "Unknown")])
+            threat_data.append(["Sample ID:", threat_details.get("sample_id", "N/A")])
+            threat_data.append(["Detection Model:", threat_details.get("model_used", "N/A")])
+            
+        elif threat_type == "Ransomware":
+            threat_data.append(["Suspicious Command:", threat_details.get("subject", "N/A")])
+            threat_data.append(["Source Host:", threat_details.get("source", "Unknown")])
+            threat_data.append(["Process Name:", threat_details.get("process_name", "N/A")])
+            threat_data.append(["User Account:", threat_details.get("user", "N/A")])
+            threat_data.append(["Command ID:", threat_details.get("command_id", "N/A")])
         
         threat_table = Table(threat_data, colWidths=[1.5*inch, 5*inch])
         threat_table.setStyle(TableStyle([
@@ -308,90 +421,153 @@ class IncidentReportGenerator:
         story.append(threat_table)
         story.append(Spacer(1, 0.2 * inch))
         
-        # Email Content Preview
-        story.append(Paragraph("EMAIL CONTENT PREVIEW", header_style))
+        # Content/Details Preview (type-specific)
+        if threat_type == "Phishing" and threat_details.get("content_preview"):
+            story.append(Paragraph("EMAIL CONTENT PREVIEW", header_style))
+            safe_content = threat_details["content_preview"].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            content_style = ParagraphStyle(
+                'Content',
+                parent=normal_style,
+                fontSize=9,
+                textColor=colors.HexColor('#475569'),
+                backColor=colors.HexColor('#f8fafc'),
+                borderPadding=10,
+                leftIndent=10,
+                rightIndent=10
+            )
+            story.append(Paragraph(f"<i>{safe_content[:400]}...</i>", content_style))
+            story.append(Spacer(1, 0.2 * inch))
         
-        # Escape HTML in content
-        safe_content = email_content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        content_style = ParagraphStyle(
-            'Content',
-            parent=normal_style,
-            fontSize=9,
-            textColor=colors.HexColor('#475569'),
-            backColor=colors.HexColor('#f8fafc'),
-            borderPadding=10,
-            leftIndent=10,
-            rightIndent=10
-        )
-        story.append(Paragraph(f"<i>{safe_content}</i>", content_style))
-        story.append(Spacer(1, 0.2 * inch))
+        elif threat_type == "Ransomware" and threat_details.get("behavior_categories"):
+            story.append(Paragraph("BEHAVIOR CATEGORIES DETECTED", header_style))
+            behaviors = threat_details["behavior_categories"]
+            behavior_text = "<br/>".join([f"• {b.replace('_', ' ').title()}" for b in behaviors[:5]])
+            story.append(Paragraph(behavior_text, normal_style))
+            story.append(Spacer(1, 0.2 * inch))
         
         # Detection Analysis
         story.append(Paragraph("DETECTION ANALYSIS", header_style))
         
-        risk_factors = detection_result.get("risk_factors", [
-            "Suspicious sender domain",
-            "Urgency language detected",
-            "Suspicious URL patterns"
-        ])
-        
-        # IOCs from explainability
+        # Get evidence and indicators from explainability
+        evidence = explainability_result.get("evidence", [])
         iocs = explainability_result.get("iocs", {})
-        suspicious_urls = iocs.get("suspicious_urls", ["http://suspicious-link.com"])
-        keywords = iocs.get("keywords", ["urgent", "verify", "suspended"])
+        indicators = explainability_result.get("indicators", {})
         
-        analysis_text = f"""
-        <b>Risk Factors Identified:</b><br/>
-        {', '.join(risk_factors) if risk_factors else 'Multiple phishing indicators detected'}<br/><br/>
+        analysis_parts = []
         
-        <b>Suspicious URLs:</b><br/>
-        {', '.join(suspicious_urls[:3]) if suspicious_urls else 'None detected'}<br/><br/>
+        if evidence:
+            analysis_parts.append(f"<b>Key Evidence:</b><br/>")
+            for ev in evidence[:4]:
+                analysis_parts.append(f"• {ev}<br/>")
+            analysis_parts.append("<br/>")
         
-        <b>Trigger Keywords:</b><br/>
-        {', '.join(keywords[:5]) if keywords else 'urgency, verify, account, suspended'}
-        """
-        story.append(Paragraph(analysis_text, normal_style))
+        if threat_type == "Phishing":
+            suspicious_urls = iocs.get("suspicious_urls", [])
+            keywords = iocs.get("keywords", [])
+            if suspicious_urls:
+                analysis_parts.append(f"<b>Suspicious URLs:</b><br/>")
+                for url in suspicious_urls[:3]:
+                    analysis_parts.append(f"• {url}<br/>")
+                analysis_parts.append("<br/>")
+            if keywords:
+                analysis_parts.append(f"<b>Trigger Keywords:</b> {', '.join(keywords[:6])}<br/>")
+        
+        elif threat_type == "Malware":
+            if indicators:
+                analysis_parts.append(f"<b>Behavioral Indicators:</b><br/>")
+                for key, value in list(indicators.items())[:5]:
+                    analysis_parts.append(f"• {key.replace('_', ' ').title()}: {value}<br/>")
+        
+        elif threat_type == "Ransomware":
+            behaviors = threat_details.get("behavior_categories", [])
+            if behaviors:
+                analysis_parts.append(f"<b>Malicious Behaviors:</b> {', '.join([b.replace('_', ' ').title() for b in behaviors])}<br/>")
+        
+        if analysis_parts:
+            story.append(Paragraph(''.join(analysis_parts), normal_style))
+        else:
+            story.append(Paragraph("Threat detected based on behavioral analysis and pattern matching.", normal_style))
+        
         story.append(Spacer(1, 0.2 * inch))
         
         # Automated Response Actions
-        story.append(Paragraph("AUTOMATED RESPONSE ACTIONS", header_style))
+        story.append(Paragraph("ACTIONS TAKEN", header_style))
+        
+        # Get action timestamp if available
+        action_time = response_result.get("timestamp", dt.strftime("%Y-%m-%d %H:%M:%S UTC"))
         
         actions_display = []
         for action in actions_taken:
-            action_name = action.replace("_", " ").title()
-            actions_display.append([f"✓ {action_name}", "Executed Successfully"])
+            if action:  # Skip None/empty actions
+                action_name = str(action).replace("_", " ").title()
+                actions_display.append([f"✓ {action_name}", "Completed"])
         
         if actions_display:
-            actions_table = Table(actions_display, colWidths=[3*inch, 2*inch])
+            story.append(Paragraph(f"<i>Actions executed at: {action_time}</i>", 
+                                 ParagraphStyle('ActionTime', parent=normal_style, fontSize=9, textColor=colors.gray)))
+            story.append(Spacer(1, 0.1 * inch))
+            
+            actions_table = Table(actions_display, colWidths=[4*inch, 2*inch])
             actions_table.setStyle(TableStyle([
                 ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#16a34a')),
                 ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#059669')),
-                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f0fdf4')),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#86efac')),
             ]))
             story.append(actions_table)
         else:
-            story.append(Paragraph("No automated actions taken.", normal_style))
+            story.append(Paragraph("Alert generated and logged for security team review.", normal_style))
         
         story.append(Spacer(1, 0.3 * inch))
         
-        # Recommendations
+        # Recommendations (type-specific)
         story.append(Paragraph("RECOMMENDATIONS", header_style))
         
-        recommendations = [
-            "1. Do not interact with any links or attachments from this email",
-            "2. Report this incident to your IT security team",
-            "3. If credentials were entered, change passwords immediately",
-            "4. Enable multi-factor authentication on sensitive accounts",
-            "5. Review other emails from this sender for potential threats"
-        ]
+        if threat_type == "Phishing":
+            recommendations = [
+                "1. Do not interact with any links or attachments from this email",
+                "2. Report this incident to your IT security team immediately",
+                "3. If credentials were entered, change passwords immediately",
+                "4. Enable multi-factor authentication on all sensitive accounts",
+                "5. Review other emails from this sender for potential threats",
+                "6. Educate users about phishing indicators and safe email practices"
+            ]
+        elif threat_type == "Malware":
+            recommendations = [
+                "1. Quarantine the infected file immediately",
+                "2. Run a full system antivirus scan on the affected machine",
+                "3. Disconnect the affected system from the network if necessary",
+                "4. Review system logs for signs of lateral movement",
+                "5. Update antivirus signatures and security patches",
+                "6. Implement application whitelisting to prevent unauthorized executables"
+            ]
+        elif threat_type == "Ransomware":
+            recommendations = [
+                "1. Immediately isolate the affected system from the network",
+                "2. Do NOT pay any ransom demands",
+                "3. Restore data from clean, verified backups",
+                "4. Scan all systems for indicators of compromise",
+                "5. Review and strengthen backup procedures",
+                "6. Implement network segmentation to limit ransomware spread",
+                "7. Report the incident to law enforcement and regulatory bodies"
+            ]
+        else:
+            recommendations = [
+                "1. Review the threat details and take appropriate containment actions",
+                "2. Notify the security team and relevant stakeholders",
+                "3. Document all findings and actions taken",
+                "4. Conduct a post-incident review to improve defenses"
+            ]
         
         for rec in recommendations:
-            story.append(Paragraph(rec, ParagraphStyle('Rec', parent=normal_style, leftIndent=20, fontSize=10)))
+            story.append(Paragraph(rec, ParagraphStyle('Rec', parent=normal_style, leftIndent=20, fontSize=10, spaceBefore=3)))
         
-        story.append(Spacer(1, 0.5 * inch))
+        story.append(Spacer(1, 0.4 * inch))
         
         # Footer
         footer_style = ParagraphStyle(

@@ -46,6 +46,15 @@ MODEL_PATH: str = os.getenv("MODEL_PATH", "ml/models/phishing_model.pkl")
 MODEL_INFO_PATH: str = os.getenv("MODEL_INFO_PATH", "ml/models/model_info.json")
 PHISHING_CONFIDENCE_THRESHOLD: float = 0.35  # Lower threshold for better demo detection
 
+RANSOMWARE_MODEL_PATH: str = os.getenv("RANSOMWARE_MODEL_PATH", "ml/models/ransomware_model.pkl")
+RANSOMWARE_MODEL_INFO_PATH: str = os.getenv("RANSOMWARE_MODEL_INFO_PATH", "ml/models/ransomware_model_info.json")
+RANSOMWARE_CONFIDENCE_THRESHOLD: float = 0.40
+
+MALWARE_MODEL_PATH: str = os.getenv("MALWARE_MODEL_PATH", "ml/models/malware_model.pkl")
+MALWARE_SCALER_PATH: str = os.getenv("MALWARE_SCALER_PATH", "ml/models/malware_scaler.pkl")
+MALWARE_MODEL_INFO_PATH: str = os.getenv("MALWARE_MODEL_INFO_PATH", "ml/models/malware_model_info.json")
+MALWARE_CONFIDENCE_THRESHOLD: float = 0.45
+
 # Incident Database (JSON-based)
 INCIDENTS_DB_PATH: str = os.getenv("INCIDENTS_DB_PATH", "data/incidents.json")
 

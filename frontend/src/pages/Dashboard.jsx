@@ -94,76 +94,94 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-200 bg-clip-text text-transparent tracking-wide uppercase">
-            Autonomous Cyber Defense System
-          </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Real-time threat monitoring and response
-          </p>
-        </div>
-
-        {/* Demo Mode Controls */}
-        <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl px-4 py-3 border border-slate-700/50">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full ${
-                demoRunning ? "bg-emerald-500 animate-pulse" : "bg-slate-500"
-              }`}
-            />
-            <span className="text-sm text-slate-400">
-              Demo Mode:{" "}
-              <span
-                className={demoRunning ? "text-emerald-400" : "text-slate-500"}
-              >
-                {demoRunning ? "Active" : "Inactive"}
-              </span>
-            </span>
+      {/* Header with Status Banner */}
+      <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-2xl p-6 border border-slate-700/50 shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">🛡️</span>
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
+                Autonomous Cyber Defense System
+              </h1>
+            </div>
+            <p className="text-slate-400 text-sm ml-13">
+              Real-time threat detection, analysis, and automated response
+            </p>
           </div>
 
-          <div className="h-6 w-px bg-slate-700" />
+          {/* Demo Mode Controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3 bg-slate-900/60 rounded-xl px-4 py-2.5 border border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    demoRunning ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" : "bg-slate-500"
+                  }`}
+                />
+                <span className="text-xs font-medium text-slate-300">
+                  System Status:
+                </span>
+                <span
+                  className={`text-xs font-bold ${
+                    demoRunning ? "text-emerald-400" : "text-slate-400"
+                  }`}
+                >
+                  {demoRunning ? "DEMO ACTIVE" : "STANDBY"}
+                </span>
+              </div>
 
-          {!demoRunning ? (
-            <button
-              onClick={handleStartDemo}
-              className="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors"
-            >
-              Start Demo
-            </button>
-          ) : (
-            <button
-              onClick={handleStopDemo}
-              className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/30 transition-colors"
-            >
-              Stop Demo
-            </button>
-          )}
+            </div>
 
-          <button
-            onClick={handleRunBatch}
-            disabled={batchLoading}
-            className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-50"
-          >
-            {batchLoading ? "Processing..." : "Run Batch"}
-          </button>
+            <div className="flex items-center gap-2">
+              {!demoRunning ? (
+                <button
+                  onClick={handleStartDemo}
+                  className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-semibold hover:bg-emerald-500/30 transition-all border border-emerald-500/30 hover:border-emerald-500/50 shadow-lg hover:shadow-emerald-500/20"
+                >
+                  ▶ Start Demo
+                </button>
+              ) : (
+                <button
+                  onClick={handleStopDemo}
+                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all border border-red-500/30 hover:border-red-500/50 shadow-lg hover:shadow-red-500/20"
+                >
+                  ■ Stop Demo
+                </button>
+              )}
 
-          <button
-            onClick={handleRefresh}
-            className="px-3 py-1.5 bg-slate-500/20 text-slate-400 rounded-lg text-sm font-medium hover:bg-slate-500/30 transition-colors"
-          >
-            ⟳ Refresh
-          </button>
+              <button
+                onClick={handleRunBatch}
+                disabled={batchLoading}
+                className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-500/30 transition-all border border-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/20"
+              >
+                {batchLoading ? "⏳ Processing..." : "🔄 Run Test Batch"}
+              </button>
+
+              <button
+                onClick={handleRefresh}
+                className="px-4 py-2 bg-slate-600/20 text-slate-300 rounded-lg text-sm font-semibold hover:bg-slate-600/30 transition-all border border-slate-600/30 hover:border-slate-600/50 shadow-lg"
+                title="Refresh dashboard data"
+              >
+                ⟳
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Overview Section */}
       <div className="animate-fade-in-delay-1">
-        <h2 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-4 flex items-center gap-2">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          Overview
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
+            <div className="w-1 h-6 bg-gradient-to-b from-emerald-500 to-cyan-500 rounded-full" />
+            System Overview
+          </h2>
+          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
+            Live Metrics
+          </span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Total Threats Detected"
@@ -197,15 +215,35 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Live Testing Panel - NEW */}
+      {/* Live Testing Panel */}
       <div className="animate-fade-in-delay-2">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
+            <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
+            Live Testing & Simulation
+          </h2>
+          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
+            Automated Testing
+          </span>
+        </div>
         <LiveTestingPanel />
       </div>
 
       {/* Threat Response & Activity Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in-delay-3">
-        <ThreatResponseFeed />
-        <SystemActivityLogs />
+      <div className="animate-fade-in-delay-3">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
+            <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-orange-500 rounded-full" />
+            Real-Time Threat Intelligence
+          </h2>
+          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
+            Active Monitoring
+          </span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ThreatResponseFeed />
+          <SystemActivityLogs />
+        </div>
       </div>
 
       {/* Charts Row */}

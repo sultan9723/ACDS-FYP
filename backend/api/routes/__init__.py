@@ -11,5 +11,7 @@ from . import feedback
 from . import reports
 from . import testing
 from . import demo
+from . import malware
+from . import malware_demo
 
-__all__ = ['auth', 'threats', 'dashboard', 'feedback', 'reports', 'testing', 'demo']
+__all__ = ['auth', 'threats', 'dashboard', 'feedback', 'reports', 'testing', 'demo', 'malware', 'malware_demo']
