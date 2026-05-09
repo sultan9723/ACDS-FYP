@@ -5,9 +5,17 @@ Rule-based Phase 1 detection for suspicious login behavior.
 """
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import random
 import uuid
 from typing import Any, Dict, List, Optional
+
+import joblib
+import pandas as pd
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 try:
     from database.connection import get_collection
@@ -23,8 +31,34 @@ ALERTS_COLLECTION = "credential_stuffing_alerts"
 RESPONSE_ACTIONS_COLLECTION = "credential_response_actions"
 FEEDBACK_COLLECTION = "credential_analyst_feedback"
 TRAINING_RECORDS_COLLECTION = "credential_training_records"
+REPORTS_DIR = Path(__file__).resolve().parents[2] / "reports" / "credential_stuffing"
 
 WINDOW_MINUTES = 5
+MODEL_FEATURE_COLUMNS = [
+    "failed_attempts_from_ip",
+    "unique_usernames_from_ip",
+    "failed_attempts_for_username",
+    "unique_ips_for_username",
+    "attempts_per_minute",
+    "success_after_failures",
+    "user_agent_variation",
+    "country_variation",
+]
+
+
+def _resolve_model_path() -> Path:
+    """Resolve the trusted local model path across dev and Docker layouts."""
+    service_path = Path(__file__).resolve()
+    candidates = [
+        service_path.parents[2] / "models" / "credential_stuffing_model.joblib",
+        service_path.parents[1] / "models" / "credential_stuffing_model.joblib",
+        Path.cwd() / "models" / "credential_stuffing_model.joblib",
+        Path("/app/models/credential_stuffing_model.joblib"),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 class CredentialStuffingService:
@@ -32,6 +66,10 @@ class CredentialStuffingService:
 
     def __init__(self):
         self.indexes_created = False
+        self.model = None
+        self.model_path = _resolve_model_path()
+        self.model_load_attempted = False
+        self.model_load_error: Optional[str] = None
 
     def health(self) -> Dict[str, Any]:
         database_available = get_collection is not None
@@ -48,9 +86,12 @@ class CredentialStuffingService:
             "success": True,
             "module": "credential_stuffing_detection",
             "status": "healthy" if collections_available else "degraded",
-            "phase": "phase_1_rule_based",
+            "phase": "rule_based_with_optional_ml",
             "database_available": database_available,
             "collections_available": collections_available,
+            "model_available": self._get_model() is not None,
+            "model_path": str(self.model_path),
+            "model_load_error": self.model_load_error,
         }
 
     def process_login_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
@@ -76,6 +117,11 @@ class CredentialStuffingService:
             "evidence": result["evidence"],
             "features": result["features"],
             "recommended_action": result["recommended_action"],
+            "detection_source": result["detection_source"],
+            "model_available": result["model_available"],
+            "model_path": result["model_path"],
+            "model_prediction": result["model_prediction"],
+            "model_confidence": result["model_confidence"],
         }
 
     def analyze_events(self, events: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -105,6 +151,11 @@ class CredentialStuffingService:
                 "evidence": result["evidence"],
                 "features": result["features"],
                 "recommended_action": result["recommended_action"],
+                "detection_source": result["detection_source"],
+                "model_available": result["model_available"],
+                "model_path": result["model_path"],
+                "model_prediction": result["model_prediction"],
+                "model_confidence": result["model_confidence"],
             })
 
         highest_result = max(results, key=lambda item: item["risk_score"], default=None)
@@ -118,6 +169,11 @@ class CredentialStuffingService:
             "severity": self._severity(max_score),
             "evidence": highest_result["evidence"] if highest_result else ["No login events were analyzed."],
             "recommended_action": self._recommended_action(max_score),
+            "detection_source": highest_result["detection_source"] if highest_result else "fallback_rule_based",
+            "model_available": highest_result["model_available"] if highest_result else self._get_model() is not None,
+            "model_path": highest_result["model_path"] if highest_result else str(self.model_path),
+            "model_prediction": highest_result["model_prediction"] if highest_result else None,
+            "model_confidence": highest_result["model_confidence"] if highest_result else None,
             "results": results,
         }
 
@@ -204,6 +260,29 @@ class CredentialStuffingService:
             "count": len(records),
         }
 
+    def generate_alert_pdf_report(self, alert_id: str) -> Path:
+        self._ensure_indexes()
+
+        alert = self._collection(ALERTS_COLLECTION).find_one({"alert_id": alert_id})
+        if not alert:
+            raise LookupError(f"Alert not found: {alert_id}")
+
+        feedback_doc = None
+        feedback_id = alert.get("feedback_id")
+        if feedback_id:
+            feedback_doc = self._collection(FEEDBACK_COLLECTION).find_one({"feedback_id": feedback_id})
+        if feedback_doc is None:
+            feedback_doc = self._collection(FEEDBACK_COLLECTION).find_one({"alert_id": alert_id})
+
+        try:
+            REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+            safe_alert_id = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in alert_id)
+            report_path = REPORTS_DIR / f"credential_stuffing_report_{safe_alert_id}.pdf"
+            self._build_pdf_report(report_path, alert, feedback_doc)
+            return report_path
+        except Exception as e:
+            raise RuntimeError(f"Failed to generate credential stuffing PDF report: {e}")
+
     def simulate_attack(self, source_ip: str = "198.51.100.25", username_prefix: str = "demo_user", count: int = 12) -> Dict[str, Any]:
         self._ensure_indexes()
         count = max(1, min(count, 50))
@@ -242,6 +321,11 @@ class CredentialStuffingService:
             "evidence": result["evidence"],
             "features": result["features"],
             "recommended_action": result["recommended_action"],
+            "detection_source": result["detection_source"],
+            "model_available": result["model_available"],
+            "model_path": result["model_path"],
+            "model_prediction": result["model_prediction"],
+            "model_confidence": result["model_confidence"],
         }
 
     def _ensure_indexes(self) -> None:
@@ -331,29 +415,63 @@ class CredentialStuffingService:
         score = 0.0
         if features["failed_attempts_from_ip"] >= 10:
             score += 0.40
-            evidence.append(f"IP {event['ip_address']} has {features['failed_attempts_from_ip']} failed attempts in {WINDOW_MINUTES} minutes.")
+            evidence.append(f"Rule engine: IP {event['ip_address']} has {features['failed_attempts_from_ip']} failed attempts in {WINDOW_MINUTES} minutes.")
         if features["unique_usernames_from_ip"] >= 5:
             score += 0.25
-            evidence.append(f"IP {event['ip_address']} targeted {features['unique_usernames_from_ip']} unique usernames.")
+            evidence.append(f"Rule engine: IP {event['ip_address']} targeted {features['unique_usernames_from_ip']} unique usernames.")
         if features["unique_ips_for_username"] >= 3:
             score += 0.25
-            evidence.append(f"Username {event['username']} received failed attempts from {features['unique_ips_for_username']} unique IPs.")
+            evidence.append(f"Rule engine: Username {event['username']} received failed attempts from {features['unique_ips_for_username']} unique IPs.")
         if features["attempts_per_minute"] >= 10:
             score += 0.20
-            evidence.append(f"IP {event['ip_address']} reached {features['attempts_per_minute']} attempts per minute.")
+            evidence.append(f"Rule engine: IP {event['ip_address']} reached {features['attempts_per_minute']} attempts per minute.")
         if features["success_after_failures"]:
             score += 0.25
-            evidence.append("Successful login occurred after multiple failures from a suspicious IP.")
+            evidence.append("Rule engine: Successful login occurred after multiple failures from a suspicious IP.")
         if features["user_agent_variation"] >= 3:
             score += 0.05
-            evidence.append(f"Observed {features['user_agent_variation']} user agents from the same IP.")
+            evidence.append(f"Rule engine: Observed {features['user_agent_variation']} user agents from the same IP.")
         if features["country_variation"] >= 3:
             score += 0.05
-            evidence.append(f"Observed {features['country_variation']} countries from the same IP.")
+            evidence.append(f"Rule engine: Observed {features['country_variation']} countries from the same IP.")
 
-        risk_score = round(min(score, 1.0), 2)
+        rule_score = round(min(score, 1.0), 2)
         if not evidence:
-            evidence.append("No credential stuffing rule thresholds were met.")
+            evidence.append("Rule engine: No credential stuffing rule thresholds were met.")
+
+        model_status = self._predict_with_model(features, event)
+        risk_score = rule_score
+        detection_source = "rule_based" if model_status["model_available"] else "fallback_rule_based"
+
+        if model_status["model_available"]:
+            if model_status["model_prediction"] == 1:
+                model_confidence = model_status["model_confidence"]
+                model_score = model_confidence if model_confidence is not None else 0.65
+                evidence.append(
+                    "ML model: predicted credential stuffing risk"
+                    + (f" with confidence {model_confidence:.2f}." if model_confidence is not None else ".")
+                )
+                if rule_score >= 0.70:
+                    risk_score = rule_score
+                    detection_source = "hybrid"
+                    evidence.append("Hybrid decision: rule-based HIGH severity preserved; ML cannot reduce it.")
+                elif rule_score >= 0.40:
+                    risk_score = round(max(rule_score, model_score, 0.40), 2)
+                    detection_source = "hybrid"
+                    evidence.append("Hybrid decision: rule and ML both contributed to the final risk.")
+                else:
+                    risk_score = round(max(rule_score, model_score, 0.40), 2)
+                    detection_source = "ml_model"
+                    evidence.append("ML model: raised low rule-based risk to at least MEDIUM.")
+            else:
+                evidence.append("ML model: did not predict credential stuffing risk.")
+                detection_source = "rule_based"
+        elif model_status.get("model_load_error"):
+            evidence.append(f"ML model unavailable; using fallback rule-based detection. Reason: {model_status['model_load_error']}")
+        else:
+            evidence.append("ML model unavailable; using fallback rule-based detection.")
+
+        risk_score = round(min(risk_score, 1.0), 2)
 
         return {
             "risk_score": risk_score,
@@ -362,7 +480,72 @@ class CredentialStuffingService:
             "evidence": evidence,
             "features": features,
             "recommended_action": self._recommended_action(risk_score),
+            "detection_source": detection_source,
+            **model_status,
         }
+
+    def _get_model(self):
+        if self.model_load_attempted:
+            return self.model
+
+        self.model_load_attempted = True
+        self.model_path = _resolve_model_path()
+        if not self.model_path.exists():
+            self.model_load_error = "model file not found"
+            return None
+
+        try:
+            # Only load the local trusted model artifact produced by the training pipeline.
+            self.model = joblib.load(self.model_path)
+            self.model_load_error = None
+        except Exception as e:
+            self.model = None
+            self.model_load_error = str(e)
+        return self.model
+
+    def _predict_with_model(self, features: Dict[str, Any], event: Dict[str, Any]) -> Dict[str, Any]:
+        model = self._get_model()
+        status = {
+            "model_available": model is not None,
+            "model_path": str(self.model_path),
+            "model_prediction": None,
+            "model_confidence": None,
+            "model_load_error": self.model_load_error,
+        }
+        if model is None:
+            return status
+
+        row = {column: features[column] for column in MODEL_FEATURE_COLUMNS}
+        row["success_after_failures"] = int(bool(row["success_after_failures"]))
+        row["user_agent"] = event.get("user_agent") or "unknown"
+
+        try:
+            input_frame = pd.DataFrame([row])
+            prediction = model.predict(input_frame)[0]
+        except Exception:
+            try:
+                input_values = [[row[column] for column in MODEL_FEATURE_COLUMNS]]
+                prediction = model.predict(input_values)[0]
+            except Exception as e:
+                status["model_available"] = False
+                status["model_load_error"] = f"model prediction failed: {e}"
+                return status
+
+        status["model_prediction"] = int(prediction)
+
+        if hasattr(model, "predict_proba"):
+            try:
+                proba = model.predict_proba(input_frame)
+                classes = list(getattr(model, "classes_", []))
+                if 1 in classes:
+                    risk_index = classes.index(1)
+                else:
+                    risk_index = min(1, len(proba[0]) - 1)
+                status["model_confidence"] = round(float(proba[0][risk_index]), 4)
+            except Exception:
+                status["model_confidence"] = None
+
+        return status
 
     def _recent_events(self, event: Dict[str, Any], window_start: datetime) -> List[Dict[str, Any]]:
         query = {
@@ -386,6 +569,11 @@ class CredentialStuffingService:
             "evidence": result["evidence"],
             "features": result["features"],
             "recommended_action": result["recommended_action"],
+            "detection_source": result.get("detection_source"),
+            "model_available": result.get("model_available"),
+            "model_path": result.get("model_path"),
+            "model_prediction": result.get("model_prediction"),
+            "model_confidence": result.get("model_confidence"),
             "source": source,
             "status": "active",
             "feedback": None,
@@ -406,6 +594,95 @@ class CredentialStuffingService:
             "created_at": datetime.now(timezone.utc),
         }
         self._collection(RESPONSE_ACTIONS_COLLECTION).insert_one(action_doc)
+
+    def _build_pdf_report(self, report_path: Path, alert: Dict[str, Any], feedback_doc: Optional[Dict[str, Any]]) -> None:
+        styles = getSampleStyleSheet()
+        story = [
+            Paragraph("ACDS Credential Stuffing Incident Report", styles["Title"]),
+            Spacer(1, 12),
+        ]
+
+        summary_fields = [
+            "alert_id",
+            "event_id",
+            "username",
+            "source_ip",
+            "severity",
+            "confidence",
+            "risk_score",
+            "detection_source",
+            "model_available",
+            "model_prediction",
+            "model_confidence",
+            "recommended_action",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        story.append(Paragraph("Incident Summary", styles["Heading2"]))
+        story.append(self._pdf_table([[field, self._format_pdf_value(alert.get(field))] for field in summary_fields]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Evidence", styles["Heading2"]))
+        evidence = alert.get("evidence") or []
+        evidence_rows = [[str(index + 1), str(item)] for index, item in enumerate(evidence)]
+        story.append(self._pdf_table(evidence_rows or [["-", "No evidence recorded."]]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Behavioral Features", styles["Heading2"]))
+        features = alert.get("features") or {}
+        feature_rows = [[key, self._format_pdf_value(value)] for key, value in features.items()]
+        story.append(self._pdf_table(feature_rows or [["-", "No features recorded."]]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Analyst Feedback", styles["Heading2"]))
+        feedback_rows = self._feedback_pdf_rows(alert, feedback_doc)
+        story.append(self._pdf_table(feedback_rows))
+
+        doc = SimpleDocTemplate(
+            str(report_path),
+            pagesize=letter,
+            rightMargin=36,
+            leftMargin=36,
+            topMargin=36,
+            bottomMargin=36,
+            title="ACDS Credential Stuffing Incident Report",
+        )
+        doc.build(story)
+
+    def _pdf_table(self, rows: List[List[str]]) -> Table:
+        table = Table(rows, colWidths=[160, 340])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+            ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#111827")),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        return table
+
+    def _feedback_pdf_rows(self, alert: Dict[str, Any], feedback_doc: Optional[Dict[str, Any]]) -> List[List[str]]:
+        if feedback_doc:
+            serialized_feedback = self._serialize(feedback_doc)
+            return [[key, self._format_pdf_value(value)] for key, value in serialized_feedback.items() if key != "id"]
+        if alert.get("feedback"):
+            return [["feedback", self._format_pdf_value(alert.get("feedback"))]]
+        return [["feedback", "No analyst feedback recorded."]]
+
+    def _format_pdf_value(self, value: Any) -> str:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, (dict, list)):
+            return str(value)
+        if value is None:
+            return ""
+        return str(value)
 
     def _severity(self, risk_score: float) -> str:
         if risk_score >= 0.70:
