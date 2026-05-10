@@ -9,10 +9,11 @@ Pipeline: Detection → Explainability → Orchestrator → Response
 
 import time
 import random
-from typing import Optional, List
+from typing import Any, Dict, Optional, List
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 # =============================================================================
@@ -54,6 +55,38 @@ class ThreeLayerDetectionRequest(BaseModel):
     user: Optional[str] = Field(None, description="User account")
 
 
+class RansomwareResponseActionRequest(BaseModel):
+    """Request to record a safe ransomware response action."""
+    action_type: str = Field(..., description="Safe response action to simulate or track")
+    incident_id: Optional[str] = Field(None, description="Incident identifier")
+    threat_id: Optional[str] = Field(None, description="Threat identifier")
+    scan_id: Optional[str] = Field(None, description="Scan identifier")
+    severity: Optional[str] = Field(None, description="Threat severity")
+    confidence: Optional[float] = Field(None, description="Detection confidence")
+    detection_confidence: Optional[float] = Field(None, description="Layered detection confidence")
+    source_host: Optional[str] = Field(None, description="Affected host")
+    process_name: Optional[str] = Field(None, description="Process name")
+    process_pid: Optional[int] = Field(None, description="Process ID")
+    file_path: Optional[str] = Field(None, description="Quarantined sample or suspect file path")
+    binary_path: Optional[str] = Field(None, description="Quarantined binary path")
+    sha256: Optional[str] = Field(None, description="Sample SHA256")
+    requested_by: Optional[str] = Field("soc-operator", description="SOC user or automation identity")
+
+
+class RansomwareResponseOrchestrationRequest(BaseModel):
+    """Request response recommendations and optional safe action execution."""
+    threat: Dict[str, Any] = Field(default_factory=dict, description="Detection result context")
+    actions: Optional[List[str]] = Field(None, description="Optional safe actions to record")
+    requested_by: Optional[str] = Field("soc-operator", description="SOC user or automation identity")
+
+
+class RansomwareReportRequest(BaseModel):
+    """Request a PDF incident report from an actual ransomware detection result."""
+    detection_result: Dict[str, Any] = Field(..., description="Ransomware scan result payload")
+    report_type: str = Field("technical", description="technical or executive")
+    requested_by: Optional[str] = Field("soc-console", description="SOC user or automation identity")
+
+
 # =============================================================================
 # Import Services — Orchestrator-based architecture
 # =============================================================================
@@ -66,6 +99,13 @@ try:
     from agents.ransomware_explainability_agent import get_ransomware_explainability_agent
     from agents.ransomware_response_agent import get_ransomware_response_agent
     from orchestration.encryption_detector import MassEncryptionDetector, FileActivity
+    from services.executable_analysis_service import get_executable_analysis_service
+    from services.ransomware_response_orchestration_service import (
+        get_ransomware_response_orchestration_service,
+    )
+    from services.ransomware_incident_report_service import (
+        get_ransomware_incident_report_service,
+    )
 except ImportError:
     try:
         from backend.ml.ransomware_service import get_ransomware_service
@@ -75,6 +115,13 @@ except ImportError:
         from backend.agents.ransomware_explainability_agent import get_ransomware_explainability_agent
         from backend.agents.ransomware_response_agent import get_ransomware_response_agent
         from backend.orchestration.encryption_detector import MassEncryptionDetector, FileActivity
+        from backend.services.executable_analysis_service import get_executable_analysis_service
+        from backend.services.ransomware_response_orchestration_service import (
+            get_ransomware_response_orchestration_service,
+        )
+        from backend.services.ransomware_incident_report_service import (
+            get_ransomware_incident_report_service,
+        )
     except ImportError:
         get_ransomware_service = None
         get_pe_detection_service = None
@@ -82,6 +129,9 @@ except ImportError:
         get_ransomware_detection_agent = None
         get_ransomware_explainability_agent = None
         get_ransomware_response_agent = None
+        get_executable_analysis_service = None
+        get_ransomware_response_orchestration_service = None
+        get_ransomware_incident_report_service = None
         MassEncryptionDetector = None
         FileActivity = None
 
@@ -188,6 +238,35 @@ def save_threat_to_database(threat_data: dict) -> Optional[str]:
     return None
 
 
+def build_response_recommendations(threat_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Attach safe SOC response recommendations without executing actions."""
+    if not get_ransomware_response_orchestration_service:
+        return []
+    try:
+        response_service = get_ransomware_response_orchestration_service()
+        return response_service.build_recommendations(threat_context)
+    except Exception as exc:
+        print(f"Error building ransomware response recommendations: {exc}")
+        return []
+
+
+def build_report_context(threat_context: Dict[str, Any]) -> Dict[str, Any]:
+    """Expose report-generation capability in scan results without creating a PDF."""
+    incident_id = (
+        threat_context.get("incident_id")
+        or threat_context.get("threat_id")
+        or threat_context.get("scan_id")
+        or threat_context.get("sample", {}).get("sha256")
+    )
+    return {
+        "available": bool(get_ransomware_incident_report_service),
+        "incident_id": incident_id,
+        "generate_endpoint": "/api/v1/ransomware/reports/generate",
+        "history_endpoint": "/api/v1/ransomware/reports",
+        "formats": ["pdf"],
+    }
+
+
 # =============================================================================
 # SCAN ENDPOINTS
 # =============================================================================
@@ -267,6 +346,9 @@ async def scan_command(request: CommandScanRequest):
             threat_id = save_threat_to_database(threat_data)
             if threat_id:
                 result['threat_id'] = threat_id
+
+        result["response_recommendations"] = build_response_recommendations(result)
+        result["reporting"] = build_report_context(result)
 
         return {"success": True, "result": result}
 
@@ -550,6 +632,140 @@ async def get_isolated_hosts():
     return {"success": True, "isolated_hosts": hosts, "count": len(hosts)}
 
 
+@router.post("/response/recommend")
+async def recommend_ransomware_response(request: RansomwareResponseOrchestrationRequest):
+    """Return safe ransomware response recommendations for a detection result."""
+    if not get_ransomware_response_orchestration_service:
+        raise HTTPException(status_code=503, detail="Response orchestration service not available")
+    service = get_ransomware_response_orchestration_service()
+    return {
+        "success": True,
+        "safe_mode": True,
+        "recommendations": service.build_recommendations(request.threat),
+        "state": service.get_state(),
+    }
+
+
+@router.post("/response/action")
+async def record_ransomware_response_action(request: RansomwareResponseActionRequest):
+    """Record one safe simulated/tracked ransomware response action."""
+    if not get_ransomware_response_orchestration_service:
+        raise HTTPException(status_code=503, detail="Response orchestration service not available")
+    service = get_ransomware_response_orchestration_service()
+    context = request.dict(exclude_none=True)
+    requested_by = context.pop("requested_by", "soc-operator")
+    action_type = context.pop("action_type")
+    try:
+        action = service.execute_action(action_type, context, requested_by=requested_by)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {
+        "success": True,
+        "safe_mode": True,
+        "action": action,
+        "timeline": service.get_timeline(action["incident_id"]),
+        "state": service.get_state(),
+    }
+
+
+@router.post("/response/orchestrate")
+async def orchestrate_ransomware_response(request: RansomwareResponseOrchestrationRequest):
+    """Return recommendations and optionally record selected safe response actions."""
+    if not get_ransomware_response_orchestration_service:
+        raise HTTPException(status_code=503, detail="Response orchestration service not available")
+    service = get_ransomware_response_orchestration_service()
+    try:
+        return service.orchestrate(
+            request.threat,
+            action_types=request.actions,
+            requested_by=request.requested_by or "soc-operator",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get("/response/history")
+async def get_ransomware_response_history(
+    incident_id: Optional[str] = None,
+    limit: int = Query(50, le=200),
+):
+    """Return safe ransomware response audit history."""
+    if not get_ransomware_response_orchestration_service:
+        raise HTTPException(status_code=503, detail="Response orchestration service not available")
+    service = get_ransomware_response_orchestration_service()
+    return {
+        "success": True,
+        "safe_mode": True,
+        "history": service.get_history(incident_id=incident_id, limit=limit),
+        "timeline": service.get_timeline(incident_id, limit=limit) if incident_id else [],
+        "state": service.get_state(),
+    }
+
+
+@router.post("/reports/generate")
+async def generate_ransomware_incident_report(request: RansomwareReportRequest):
+    """Generate a stored PDF report from a real ransomware detection result."""
+    if not get_ransomware_incident_report_service:
+        raise HTTPException(status_code=503, detail="Ransomware report service not available")
+    service = get_ransomware_incident_report_service()
+    try:
+        report = service.generate_report(
+            request.detection_result,
+            report_type=request.report_type,
+            requested_by=request.requested_by or "soc-console",
+        )
+        return {"success": True, "report": report}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate ransomware report: {exc}")
+
+
+@router.get("/reports")
+async def list_ransomware_incident_reports(
+    limit: int = Query(50, le=100),
+    incident_id: Optional[str] = None,
+):
+    """List historical ransomware incident report metadata."""
+    if not get_ransomware_incident_report_service:
+        raise HTTPException(status_code=503, detail="Ransomware report service not available")
+    service = get_ransomware_incident_report_service()
+    reports = service.list_reports(limit=limit, incident_id=incident_id)
+    return {"success": True, "reports": reports, "count": len(reports)}
+
+
+@router.get("/reports/{report_id}")
+async def get_ransomware_incident_report(report_id: str):
+    """Return metadata for a generated ransomware incident report."""
+    if not get_ransomware_incident_report_service:
+        raise HTTPException(status_code=503, detail="Ransomware report service not available")
+    service = get_ransomware_incident_report_service()
+    report = service.get_report(report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Ransomware report not found")
+    return {"success": True, "report": report}
+
+
+@router.get("/reports/{report_id}/download")
+async def download_ransomware_incident_report(report_id: str):
+    """Download a generated ransomware incident report PDF."""
+    if not get_ransomware_incident_report_service:
+        raise HTTPException(status_code=503, detail="Ransomware report service not available")
+    service = get_ransomware_incident_report_service()
+    report = service.get_report(report_id)
+    path = service.get_report_path(report_id)
+    if not report or not path:
+        raise HTTPException(status_code=404, detail="Ransomware report file not found")
+    return FileResponse(
+        path=str(path),
+        media_type="application/pdf",
+        filename=path.name,
+        headers={"Content-Disposition": f"attachment; filename={path.name}"},
+    )
+
+
 @router.get("/stats")
 async def get_ransomware_stats():
     """Get comprehensive ransomware pipeline statistics."""
@@ -656,6 +872,126 @@ async def get_detection_layers_status():
         else "degraded"
     )
     return {"success": True, "status": status}
+
+
+@router.post("/upload-executable")
+async def upload_executable_sample(file: UploadFile = File(...)):
+    """Upload a quarantined executable sample and run real PE/static analysis."""
+    if not get_executable_analysis_service:
+        raise HTTPException(status_code=503, detail="Executable analysis service not available")
+
+    start_time = time.time()
+    try:
+        analysis_service = get_executable_analysis_service()
+        analysis = analysis_service.analyze_upload(file)
+        verdict = analysis["verdict"]
+        ml_result = analysis["ml"]
+        static_result = analysis["static_analysis"]
+        sample = analysis["sample"]
+
+        result = {
+            "timestamp": analysis["timestamp"],
+            "analysis_type": "executable_upload",
+            "command": f"Uploaded executable sample {sample['filename']}",
+            "source_host": "uploaded-sample",
+            "process_name": sample["filename"],
+            "filename": sample["filename"],
+            "sha256": sample["sha256"],
+            "entropy": static_result["entropy"],
+            "suspicious_imports": static_result["suspicious_imports"],
+            "suspicious_import_count": static_result["suspicious_import_count"],
+            "ml_threat_score": verdict["confidence"],
+            "layers": {
+                "layer2_pe_header": {
+                    "status": "success",
+                    "is_ransomware": verdict["is_ransomware"],
+                    "confidence": verdict["confidence"],
+                    "severity": verdict["severity"],
+                    "model": "Gradient Boosting Classifier (ransomware-only filtered)",
+                    "binary_path": sample["path"],
+                    "features_extracted": analysis["pe_header"]["features_extracted"],
+                    "model_loaded": analysis["pe_header"]["model_loaded"],
+                    "model_confidence": ml_result["confidence"],
+                    "model_is_ransomware": ml_result["is_ransomware"],
+                    "prediction_class": ml_result.get("prediction_class"),
+                    "model_error": analysis["pe_header"].get("model_error"),
+                    "model_warning": analysis["pe_header"].get("model_warning"),
+                },
+                "layer2_static_executable_analysis": {
+                    "status": "success",
+                    "sha256": sample["sha256"],
+                    "size_bytes": sample["size_bytes"],
+                    "entropy": static_result["entropy"],
+                    "suspicious_imports": static_result["suspicious_imports"],
+                    "suspicious_import_count": static_result["suspicious_import_count"],
+                    "imports_scanned": static_result.get("imports_scanned", 0),
+                    "yara": static_result["yara"],
+                    "static_score": static_result.get("static_score", 0),
+                    "indicators": verdict["indicators"],
+                },
+            },
+            "overall_verdict": "RANSOMWARE_DETECTED" if verdict["is_ransomware"] else (
+                "SUSPICIOUS" if verdict["confidence"] >= 0.4 else "BENIGN"
+            ),
+            "detection_confidence": verdict["confidence"],
+            "severity": verdict["severity"],
+            "triggered_layers": ["Layer 2: PE Header + Static Executable Analysis"]
+                if verdict["confidence"] >= 0.4 else [],
+            "sample": sample,
+            "processing_time_ms": round((time.time() - start_time) * 1000, 2),
+        }
+
+        scan_id = save_scan_to_database({
+            "command": result["command"],
+            "source_host": result["source_host"],
+            "process_name": result["process_name"],
+            "is_ransomware": verdict["is_ransomware"],
+            "confidence": verdict["confidence"],
+            "severity": verdict["severity"],
+            "processing_time_ms": result["processing_time_ms"],
+            "iocs": {
+                "sha256": sample["sha256"],
+                "filename": sample["filename"],
+                "entropy": static_result["entropy"],
+                "suspicious_imports": static_result["suspicious_imports"],
+                "yara_matches": static_result["yara"].get("matches", []),
+            },
+            "behavior_categories": verdict["indicators"],
+        })
+        if scan_id:
+            result["scan_id"] = scan_id
+
+        if verdict["is_ransomware"]:
+            threat_id = save_threat_to_database({
+                "severity": verdict["severity"],
+                "confidence": verdict["confidence"],
+                "source_host": "uploaded-sample",
+                "process_name": sample["filename"],
+                "command": f"Uploaded executable sample {sample['filename']}",
+                "iocs": {
+                    "sha256": sample["sha256"],
+                    "suspicious_imports": static_result["suspicious_imports"],
+                    "yara_matches": static_result["yara"].get("matches", []),
+                },
+                "behavior_categories": verdict["indicators"],
+                "action_taken": "Sample quarantined for analysis",
+            })
+            if threat_id:
+                result["threat_id"] = threat_id
+
+        result["response_recommendations"] = build_response_recommendations(result)
+        result["recommended_actions"] = [
+            item.get("label") for item in result["response_recommendations"] if item.get("label")
+        ]
+        result["reporting"] = build_report_context(result)
+
+        return {"success": True, "result": result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Executable analysis error: {exc}")
 
 
 @router.get("/{threat_id}")
@@ -853,6 +1189,13 @@ async def detect_three_layers(request: ThreeLayerDetectionRequest):
                 result["threat_id"] = threat_id
 
         result["processing_time_ms"] = round((time.time() - start_time) * 1000, 2)
+        result["severity"] = "CRITICAL" if result["detection_confidence"] > 0.8 else (
+            "HIGH" if result["detection_confidence"] >= 0.65 else (
+                "MEDIUM" if result["detection_confidence"] >= 0.4 else "LOW"
+            )
+        )
+        result["response_recommendations"] = build_response_recommendations(result)
+        result["reporting"] = build_report_context(result)
         return {"success": True, "result": result}
     except HTTPException:
         raise
@@ -887,6 +1230,15 @@ async def monitor_file_encryption(file_activities: List[FileActivityRequest]):
                 "files_tracked": len(file_activities),
             }
 
+        alert_payload = {
+            "severity": alert.threat_level,
+            "confidence": float(alert.confidence),
+            "source_host": file_activities[0].source_host if file_activities else None,
+            "process_name": alert.process_name,
+            "process_pid": alert.process_pid,
+            "detection_confidence": float(alert.confidence),
+        }
+
         return {
             "success": True,
             "alert_raised": True,
@@ -902,6 +1254,8 @@ async def monitor_file_encryption(file_activities: List[FileActivityRequest]):
                 "is_backup_safe": alert.backup_safe,
                 "timestamp": alert.timestamp,
             },
+            "response_recommendations": build_response_recommendations(alert_payload),
+            "reporting": build_report_context(alert_payload),
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Encryption monitoring error: {exc}")
