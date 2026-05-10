@@ -349,7 +349,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
           <CardTitle className="text-slate-100 text-base">3-Layer Detection Mode</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
               { id: "command", label: "Layer 1 Only", desc: "Command behavior analysis" },
               { id: "encryption", label: "Layer 3 Only", desc: "Encryption detection" },
@@ -415,7 +415,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
           {(detectingMode === "encryption" || detectingMode === "full") && (
             <div>
               <label className="text-xs text-slate-500 uppercase block mb-2">Simulated File Activities</label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   type="range"
                   min="10"
@@ -429,7 +429,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                   aria-valuenow={fileCount}
                   className="flex-1 h-2 bg-slate-700 rounded-lg cursor-pointer accent-emerald-500"
                 />
-                <span className="text-sm font-semibold text-slate-300 min-w-[50px]">{fileCount} files</span>
+                <span className="text-sm font-semibold text-slate-300 sm:min-w-[72px]">{fileCount} files</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 Simulates {fileCount} rapid file modifications with ransomware-like extensions.

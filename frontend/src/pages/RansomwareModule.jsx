@@ -124,7 +124,7 @@ const RansomwareModule = () => {
             </div>
           )}
         </div>
-        <div className="min-w-0 lg:sticky lg:top-4 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto">
+        <div className="min-w-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
           <RansomwareThreatDetails threat={selectedThreat} />
         </div>
       </div>

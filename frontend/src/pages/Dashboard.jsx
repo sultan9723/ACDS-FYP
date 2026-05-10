@@ -397,7 +397,7 @@ const Dashboard = () => {
       </section>
 
       <section>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Validation

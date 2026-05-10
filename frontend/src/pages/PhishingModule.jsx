@@ -34,7 +34,7 @@ const PhishingModule = () => {
         <div className="lg:col-span-2 min-w-0">
           <EmailList />
         </div>
-        <div className="min-w-0 lg:sticky lg:top-4">
+        <div className="min-w-0 lg:sticky lg:top-24">
           <IncidentDetails />
         </div>
       </div>

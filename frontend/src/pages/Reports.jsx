@@ -441,7 +441,7 @@ ${generatedReport.threatBreakdown
       {/* AI Report Generation Tab */}
       {activeTab === "ai-report" && (
         <>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Report Type Selection */}
         <div className="lg:col-span-2 rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 sm:p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -555,7 +555,7 @@ ${generatedReport.threatBreakdown
       {/* Generated Report Display */}
       {generatedReport && (
         <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 sm:p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-cyan-300" />
               Generated Report
@@ -567,7 +567,7 @@ ${generatedReport.threatBreakdown
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
             <div className="rounded-lg border border-slate-800 bg-slate-950/45 p-4">
               <p className="text-sm text-slate-400">Total Threats</p>
               <p className="text-2xl font-bold text-white">

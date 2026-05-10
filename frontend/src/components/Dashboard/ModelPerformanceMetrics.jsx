@@ -30,12 +30,17 @@ const ModelPerformanceMetrics = () => {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-emerald-400/80 uppercase tracking-wider mb-4">
-        Model Performance
-      </h2>
+      <div className="mb-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          Model Analytics
+        </p>
+        <h2 className="mt-1 text-lg font-semibold text-slate-100">
+          Model Performance
+        </h2>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Accuracy Over Time */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+        <div className="bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-slate-300 mb-4">
             Accuracy Over Time
           </h3>
@@ -89,7 +94,7 @@ const ModelPerformanceMetrics = () => {
         </div>
 
         {/* Confusion Matrix */}
-        <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-4">
+        <div className="bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-slate-300 mb-4">
             Confusion Matrix
           </h3>
@@ -110,11 +115,11 @@ const ModelPerformanceMetrics = () => {
                 {safeConfusionData.fp || 0}
               </p>
             </div>
-            <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-lg text-center">
-              <p className="text-orange-400/80 text-xs uppercase tracking-wider mb-1">
+            <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-lg text-center">
+              <p className="text-amber-400/80 text-xs uppercase tracking-wider mb-1">
                 FN
               </p>
-              <p className="text-2xl font-bold text-orange-400">
+              <p className="text-2xl font-bold text-amber-400">
                 {safeConfusionData.fn || 0}
               </p>
             </div>
