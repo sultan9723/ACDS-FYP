@@ -55,40 +55,51 @@ const RansomwareModule = () => {
   };
 
   return (
-    <div className="space-y-6 min-h-[calc(100vh-100px)] pb-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-100">
-          Ransomware Detection System
-          </h1>
-          <div className="flex gap-2">
-            <span className="px-3 py-1 bg-green-900/50 text-green-400 rounded-full text-xs border border-green-900">
-            3-Layer Detection Active
+    <div className="space-y-5 min-h-[calc(100vh-100px)] pb-6">
+      <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+              Detection Module
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
+              Ransomware Detection System
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Run layered command, behavior, and executable analysis while
+              preserving the current automated response workflow.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+              3-Layer Detection Active
             </span>
-          <span className="px-3 py-1 bg-blue-900/50 text-blue-400 rounded-full text-xs border border-blue-900">
-            ML + Rules
+            <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+              ML + Rules
             </span>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         <div className="lg:col-span-2 min-w-0 flex flex-col space-y-4">
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("scanner")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === "scanner"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
+                  : "border-slate-800 bg-slate-900/70 text-slate-400 hover:text-slate-200"
               }`}
             >
               3-Layer Scanner
             </button>
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === "history"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-slate-200"
+                  ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200"
+                  : "border-slate-800 bg-slate-900/70 text-slate-400 hover:text-slate-200"
               }`}
             >
               Scan History

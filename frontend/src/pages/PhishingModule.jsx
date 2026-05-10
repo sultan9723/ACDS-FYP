@@ -4,26 +4,37 @@ import IncidentDetails from "../components/Dashboard/IncidentDetails";
 
 const PhishingModule = () => {
   return (
-    <div className="space-y-6 h-[calc(100vh-100px)]">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-100">
-          Email Phishing Detection
-        </h1>
-        <div className="flex gap-2">
-          <span className="px-3 py-1 bg-green-900/50 text-green-400 rounded-full text-xs border border-green-900">
-            System Active
-          </span>
-          <span className="px-3 py-1 bg-blue-900/50 text-blue-400 rounded-full text-xs border border-blue-900">
-            Real-time Monitoring
-          </span>
+    <div className="space-y-5 min-h-[calc(100vh-100px)] pb-6">
+      <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+              Detection Module
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
+              Email Phishing Detection
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Monitor scanned emails, review model confidence, and triage
+              phishing evidence with analyst feedback.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+              System Active
+            </span>
+            <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+              Real-time Monitoring
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full pb-6">
-        <div className="lg:col-span-2 h-full overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        <div className="lg:col-span-2 min-w-0">
           <EmailList />
         </div>
-        <div className="h-full overflow-hidden">
+        <div className="min-w-0 lg:sticky lg:top-4">
           <IncidentDetails />
         </div>
       </div>

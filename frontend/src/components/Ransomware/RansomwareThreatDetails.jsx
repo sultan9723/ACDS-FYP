@@ -6,27 +6,33 @@ import ResponseActionsPanel from "./ResponseActionsPanel";
 const getSeverityColor = (severity) => {
   switch (severity?.toUpperCase()) {
     case "CRITICAL":
-      return "bg-red-900/50 text-red-400 border-red-900";
+      return "bg-red-500/15 text-red-200 border-red-500/30";
     case "HIGH":
-      return "bg-orange-900/50 text-orange-400 border-orange-900";
+      return "bg-rose-500/15 text-rose-200 border-rose-500/30";
     case "MEDIUM":
-      return "bg-yellow-900/50 text-yellow-400 border-yellow-900";
+      return "bg-amber-500/15 text-amber-200 border-amber-500/30";
     default:
-      return "bg-green-900/50 text-green-400 border-green-900";
+      return "bg-emerald-500/15 text-emerald-200 border-emerald-500/30";
   }
 };
 
 const RansomwareThreatDetails = ({ threat }) => {
   if (!threat) {
     return (
-      <Card className="bg-slate-900/50 border-slate-800 min-h-[320px]">
+      <Card className="bg-slate-900/70 border-slate-800/80 min-h-[320px]">
         <CardHeader>
-          <CardTitle className="text-slate-200">Threat Details</CardTitle>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Evidence Panel
+          </p>
+          <CardTitle className="text-slate-100">Threat Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center h-48 text-slate-500">
-            <p className="text-sm">No threat selected</p>
-            <p className="text-xs mt-1">Scan a command to see details</p>
+          <div className="flex flex-col items-center justify-center h-48 px-6 text-center">
+            <p className="text-sm font-medium text-slate-300">No threat selected</p>
+            <p className="text-xs mt-2 leading-5 text-slate-500">
+              Run a layered scan or select scan history to review detection
+              evidence, response actions, and reporting context.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -47,12 +53,17 @@ const RansomwareThreatDetails = ({ threat }) => {
   const response = threat.pipeline_results?.response || {};
 
   return (
-    <Card className="bg-slate-900/50 border-slate-800">
+    <Card className="bg-slate-900/70 border-slate-800/80">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-slate-200 text-base">
-            Threat Details
-          </CardTitle>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Evidence Panel
+            </p>
+            <CardTitle className="mt-1 text-slate-100 text-base">
+              Threat Details
+            </CardTitle>
+          </div>
           <span
             className={`text-xs px-2 py-1 rounded border ${getSeverityColor(
               threat.severity
@@ -131,7 +142,7 @@ const RansomwareThreatDetails = ({ threat }) => {
             <p className="text-xs text-slate-500 uppercase mb-2">
               Attack Stage
             </p>
-            <span className="text-xs px-2 py-1 bg-orange-900/30 text-orange-400 border border-orange-900/50 rounded">
+            <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-200 border border-amber-500/25 rounded">
               {explain.attack_stage.replace(/_/g, " ")}
             </span>
           </div>
