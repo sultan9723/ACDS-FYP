@@ -47,12 +47,12 @@ const LiveTestingPanel = () => {
       : 0;
 
   return (
-    <div className="relative bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-emerald-500/30 rounded-xl p-6 transition-all duration-300 group overflow-hidden">
+    <div className="relative bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 hover:border-emerald-500/30 rounded-xl p-5 sm:p-6 transition-all duration-300 group overflow-hidden">
       {/* Decorative corner accent */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 relative">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 relative">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 rounded-lg border border-emerald-500/20">
             <BoltIcon className="h-6 w-6 text-emerald-400" />
@@ -74,14 +74,14 @@ const LiveTestingPanel = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center space-x-4 mb-6">
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 mb-6">
+        <div className="flex items-center gap-2">
           <label className="text-sm text-slate-400">Samples:</label>
           <select
             value={testCount}
             onChange={(e) => setTestCount(Number(e.target.value))}
             disabled={testRunning}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
           >
             <option value={5}>5 emails</option>
             <option value={10}>10 emails</option>
@@ -93,10 +93,10 @@ const LiveTestingPanel = () => {
         <button
           onClick={handleRunTest}
           disabled={testRunning}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
             testRunning
               ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25"
+              : "border border-emerald-500/30 bg-emerald-500/20 text-emerald-100 hover:bg-emerald-500/30"
           }`}
         >
           {testRunning ? (
