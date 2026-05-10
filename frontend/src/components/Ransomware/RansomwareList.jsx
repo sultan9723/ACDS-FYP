@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
-
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+import api from "../../utils/api";
 
 const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) => {
   const [scans, setScans] = useState([]);
@@ -28,8 +27,8 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
   const fetchScans = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/ransomware/scans/list?limit=50`);
-      const data = await res.json();
+      const res = await api.get("/ransomware/scans/list", { params: { limit: 50 } });
+      const data = res.data;
       if (data.success) {
         const existingIds = new Set(recentScans.map((scan) => scan.id));
         const fetchedScans = (data.scans || []).filter((scan) => !existingIds.has(scan.id));
@@ -47,12 +46,8 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
     setScanning(true);
     setScanResult(null);
     try {
-      const res = await fetch(`${API_BASE}/ransomware/scan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: scanInput }),
-      });
-      const data = await res.json();
+      const res = await api.post("/ransomware/scan", { command: scanInput });
+      const data = res.data;
       if (data.success) {
         setScanResult(data.result);
         if (onSelectThreat) onSelectThreat(data.result);

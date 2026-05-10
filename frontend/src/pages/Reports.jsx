@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDashboard } from "../context/DashboardContext";
+import api from "../utils/api";
 import {
   FileText,
   Download,
@@ -19,8 +20,6 @@ import {
   Eye,
   Trash2,
 } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
 const Reports = () => {
   const dashboardData = useDashboard() || {};
@@ -52,8 +51,8 @@ const Reports = () => {
   const fetchIncidentReports = async () => {
     setLoadingReports(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/reports/incidents?limit=50`);
-      const data = await response.json();
+      const response = await api.get("/reports/incidents", { params: { limit: 50 } });
+      const data = response.data;
       if (data.success) {
         setIncidentReports(data.reports || []);
       }
@@ -67,20 +66,18 @@ const Reports = () => {
   // Download PDF incident report
   const downloadPDFReport = async (reportId, filename) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/reports/incidents/${reportId}/download`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || `incident_report_${reportId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } else {
-        console.error("Failed to download report");
-      }
+      const response = await api.get(`/reports/incidents/${reportId}/download`, {
+        responseType: "blob",
+      });
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || `incident_report_${reportId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading report:", error);
     }
@@ -91,12 +88,8 @@ const Reports = () => {
     if (!window.confirm("Are you sure you want to delete this report?")) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/reports/incidents/${reportId}`, {
-        method: "DELETE"
-      });
-      if (response.ok) {
-        setIncidentReports(prev => prev.filter(r => r.report_id !== reportId));
-      }
+      await api.delete(`/reports/incidents/${reportId}`);
+      setIncidentReports(prev => prev.filter(r => r.report_id !== reportId));
     } catch (error) {
       console.error("Error deleting report:", error);
     }

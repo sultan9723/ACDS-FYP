@@ -101,6 +101,11 @@ active_tokens = {}
 def get_user_by_email(email: str) -> Optional[dict]:
     """Get user by email from database or in-memory store."""
     email = email.lower()
+
+    # Fast path: in-memory users (default admin fallback)
+    local_user = users_db.get(email)
+    if local_user:
+        return local_user
     
     if USE_DATABASE and get_collection:
         try:
@@ -114,12 +119,18 @@ def get_user_by_email(email: str) -> Optional[dict]:
             print(f"Database error: {e}")
     
     # Fallback to in-memory store
-    return users_db.get(email)
+    return local_user
 
 
 def update_user_login(user_id: str, email: str):
     """Update user's last login timestamp."""
     email = email.lower()
+
+    # Update in-memory users immediately and avoid sync DB roundtrip delays
+    if email in users_db:
+        users_db[email]["last_login"] = datetime.now(timezone.utc).isoformat()
+        users_db[email]["login_count"] = users_db[email].get("login_count", 0) + 1
+        return
     
     if USE_DATABASE and get_collection:
         try:
@@ -160,6 +171,22 @@ def ensure_admin_exists():
                         "preferences": {}
                     })
                     print("✅ Created default admin user in database")
+                else:
+                    # Keep development admin usable after auth/hash migrations.
+                    # If default password no longer validates, reset hash and critical flags.
+                    stored_hash = admin.get("password_hash")
+                    if not verify_password(DEFAULT_ADMIN_PASSWORD, stored_hash):
+                        collection.update_one(
+                            {"email": DEFAULT_ADMIN_EMAIL},
+                            {
+                                "$set": {
+                                    "password_hash": hash_password(DEFAULT_ADMIN_PASSWORD),
+                                    "role": "admin",
+                                    "is_active": True,
+                                }
+                            },
+                        )
+                        print("✅ Updated default admin credentials in database")
         except Exception as e:
             print(f"Admin creation error: {e}")
 

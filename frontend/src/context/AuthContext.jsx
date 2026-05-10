@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, verifyToken, getUserProfile, logoutUser } from "../utils/api";
+import {
+  loginUser,
+  verifyToken,
+  getUserProfile,
+  logoutUser,
+  setUnauthorizedHandler,
+  clearStoredAuth,
+} from "../utils/api";
 
 const AuthContext = createContext(null);
 
@@ -12,15 +19,25 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const clearAuthState = () => {
+    clearStoredAuth();
+    setToken(null);
+    setUser(null);
+  };
+
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("authToken"));
+  const [token, setToken] = useState(
+    localStorage.getItem("authToken") || localStorage.getItem("token")
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   // Check if user is authenticated on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedToken = localStorage.getItem("authToken");
-      const storedUser = localStorage.getItem("authUser");
+      const storedToken =
+        localStorage.getItem("authToken") || localStorage.getItem("token");
+      const storedUser =
+        localStorage.getItem("authUser") || localStorage.getItem("user");
 
       if (!storedToken || !storedUser) {
         setIsLoading(false);
@@ -30,10 +47,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const validation = await verifyToken();
         if (!validation?.valid) {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("authUser");
-          setToken(null);
-          setUser(null);
+          clearAuthState();
           setIsLoading(false);
           return;
         }
@@ -45,10 +59,7 @@ export const AuthProvider = ({ children }) => {
         setToken(storedToken);
         setUser(resolvedUser);
       } catch {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("authUser");
-        setToken(null);
-        setUser(null);
+        clearAuthState();
       } finally {
         setIsLoading(false);
       }
@@ -57,19 +68,31 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearAuthState();
+    });
+
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
   const login = async (email, password) => {
     try {
       const data = await loginUser(email, password);
+      const accessToken = data?.access_token || data?.token;
+      const responseUser = data?.user;
 
-      if (!data?.success || !data?.access_token || !data?.user) {
+      if (!accessToken || !responseUser) {
         return { success: false, error: data?.message || "Invalid credentials" };
       }
 
-      localStorage.setItem("authToken", data.access_token);
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem("authToken", accessToken);
+      localStorage.setItem("authUser", JSON.stringify(responseUser));
 
-      setToken(data.access_token);
-      setUser(data.user);
+      setToken(accessToken);
+      setUser(responseUser);
 
       return { success: true };
     } catch (error) {
@@ -83,10 +106,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // no-op: always clear local state on logout
     }
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
-    setToken(null);
-    setUser(null);
+    clearAuthState();
   };
 
   const isAuthenticated = !!token && !!user;
