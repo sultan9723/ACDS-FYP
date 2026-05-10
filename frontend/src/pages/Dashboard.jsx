@@ -1,4 +1,18 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  ClipboardCheck,
+  Play,
+  RefreshCw,
+  Shield,
+  Square,
+  Target,
+  Zap,
+} from "lucide-react";
 import StatsCard from "../components/Dashboard/StatsCard";
 import ThreatsOverTimeChart from "../components/Dashboard/ThreatsOverTimeChart";
 import ThreatTypesChart from "../components/Dashboard/ThreatTypesChart";
@@ -11,14 +25,19 @@ import ThreatResponseFeed from "../components/Dashboard/ThreatResponseFeed";
 import SystemActivityLogs from "../components/Dashboard/SystemActivityLogs";
 import { useDashboard } from "../context/DashboardContext";
 
+const severityRank = {
+  CRITICAL: 4,
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+};
+
 const Dashboard = () => {
   const dashboardData = useDashboard();
   const [batchLoading, setBatchLoading] = useState(false);
 
-  // Check for loading state
   const loading = dashboardData?.loading;
 
-  // Provide safe defaults to prevent crashes
   const stats = dashboardData?.stats || {
     phishingDetected: 0,
     activeThreats: 0,
@@ -31,16 +50,62 @@ const Dashboard = () => {
   const responseActions = dashboardData?.responseActions || [];
   const testResults = dashboardData?.testResults || [];
 
-  // Demo mode
   const demoRunning = dashboardData?.demoRunning || false;
   const startDemo = dashboardData?.startDemo;
   const stopDemo = dashboardData?.stopDemo;
   const runBatch = dashboardData?.runBatch;
   const refreshData = dashboardData?.refreshData;
 
+  const safeLiveThreats = Array.isArray(liveThreats) ? liveThreats : [];
+  const safeResponseActions = Array.isArray(responseActions)
+    ? responseActions
+    : [];
+  const safeTestResults = Array.isArray(testResults) ? testResults : [];
+
+  const activeThreatCount = stats.activeThreats || safeLiveThreats.length;
+  const automatedActionCount =
+    stats.autoResolved || stats.resolvedThreats || safeResponseActions.length;
+  const detectionAccuracy =
+    safeTestResults.length > 0
+      ? Math.round(
+          (safeTestResults.filter((result) => result && result.correct).length /
+            safeTestResults.length) *
+            100
+        )
+      : stats.accuracy || 97.2;
+
+  const mostCriticalThreat = useMemo(() => {
+    if (safeLiveThreats.length === 0) return null;
+    return [...safeLiveThreats].sort((a, b) => {
+      const bRank = severityRank[String(b?.severity || "").toUpperCase()] || 0;
+      const aRank = severityRank[String(a?.severity || "").toUpperCase()] || 0;
+      return bRank - aRank;
+    })[0];
+  }, [safeLiveThreats]);
+
+  const hasCriticalThreat =
+    String(mostCriticalThreat?.severity || "").toUpperCase() === "CRITICAL";
+  const posture = activeThreatCount > 0 ? "Attention Required" : "Protected";
+  const postureTone = hasCriticalThreat
+    ? "critical"
+    : activeThreatCount > 0
+    ? "warning"
+    : "safe";
+  const systemHealth =
+    activeThreatCount === 0
+      ? "Healthy"
+      : hasCriticalThreat
+      ? "Critical"
+      : "Monitoring";
+  const analystNextStep = mostCriticalThreat
+    ? `Review ${mostCriticalThreat.module || "threat"} incident ${
+        mostCriticalThreat.id || ""
+      } and validate automated containment.`
+    : "Monitor live feeds, refresh telemetry, or run a controlled test batch to validate readiness.";
+
   const handleStartDemo = async () => {
     try {
-      await startDemo(300); // 5 minutes = 300 seconds
+      await startDemo(300);
     } catch (error) {
       console.error("Failed to start demo:", error);
     }
@@ -73,199 +138,291 @@ const Dashboard = () => {
     }
   };
 
-  // Show loading skeleton if still loading
   if (loading) {
     return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-8 bg-slate-700 rounded w-1/3"></div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-slate-700 rounded-xl"></div>
+      <div className="space-y-5 animate-pulse">
+        <div className="h-40 rounded-xl bg-slate-800/70"></div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="h-32 rounded-xl bg-slate-800/70"></div>
           ))}
         </div>
-        <div className="h-64 bg-slate-700 rounded-xl"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 bg-slate-700 rounded-xl"></div>
-          <div className="h-80 bg-slate-700 rounded-xl"></div>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+          <div className="h-96 rounded-xl bg-slate-800/70 xl:col-span-2"></div>
+          <div className="h-96 rounded-xl bg-slate-800/70"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header with Status Banner */}
-      <div className="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-2xl p-6 border border-slate-700/50 shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🛡️</span>
+    <div className="space-y-5">
+      <section className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.24)] backdrop-blur-sm sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-3 flex items-center gap-3">
+              <div
+                className={`flex h-11 w-11 items-center justify-center rounded-lg border ${
+                  postureTone === "critical"
+                    ? "border-red-500/30 bg-red-500/10 text-red-300"
+                    : postureTone === "warning"
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                }`}
+              >
+                <Shield className="h-5 w-5" />
               </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent tracking-tight">
-                Autonomous Cyber Defense System
-              </h1>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300/80">
+                  ACDS Command Center
+                </p>
+                <h1 className="text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">
+                  {posture}
+                </h1>
+              </div>
             </div>
-            <p className="text-slate-400 text-sm ml-13">
-              Real-time threat detection, analysis, and automated response
+            <p className="text-sm leading-6 text-slate-400">
+              AI-driven autonomous cyber defense for real-time detection,
+              response, and analyst reporting.
             </p>
           </div>
 
-          {/* Demo Mode Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex items-center gap-3 bg-slate-900/60 rounded-xl px-4 py-2.5 border border-slate-700/50">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    demoRunning ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50" : "bg-slate-500"
-                  }`}
-                />
-                <span className="text-xs font-medium text-slate-300">
-                  System Status:
-                </span>
-                <span
-                  className={`text-xs font-bold ${
-                    demoRunning ? "text-emerald-400" : "text-slate-400"
-                  }`}
-                >
-                  {demoRunning ? "DEMO ACTIVE" : "STANDBY"}
-                </span>
-              </div>
-
+          <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[520px]">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Active Threats
+              </p>
+              <p
+                className={`mt-2 text-2xl font-semibold ${
+                  activeThreatCount > 0 ? "text-red-300" : "text-emerald-300"
+                }`}
+              >
+                {activeThreatCount}
+              </p>
             </div>
-
-            <div className="flex items-center gap-2">
-              {!demoRunning ? (
-                <button
-                  onClick={handleStartDemo}
-                  className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg text-sm font-semibold hover:bg-emerald-500/30 transition-all border border-emerald-500/30 hover:border-emerald-500/50 shadow-lg hover:shadow-emerald-500/20"
-                >
-                  ▶ Start Demo
-                </button>
-              ) : (
-                <button
-                  onClick={handleStopDemo}
-                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all border border-red-500/30 hover:border-red-500/50 shadow-lg hover:shadow-red-500/20"
-                >
-                  ■ Stop Demo
-                </button>
-              )}
-
-              <button
-                onClick={handleRunBatch}
-                disabled={batchLoading}
-                className="px-4 py-2 bg-blue-500/20 text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-500/30 transition-all border border-blue-500/30 hover:border-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-blue-500/20"
-              >
-                {batchLoading ? "⏳ Processing..." : "🔄 Run Test Batch"}
-              </button>
-
-              <button
-                onClick={handleRefresh}
-                className="px-4 py-2 bg-slate-600/20 text-slate-300 rounded-lg text-sm font-semibold hover:bg-slate-600/30 transition-all border border-slate-600/30 hover:border-slate-600/50 shadow-lg"
-                title="Refresh dashboard data"
-              >
-                ⟳
-              </button>
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Critical Incident
+              </p>
+              <p className="mt-2 truncate text-sm font-medium text-slate-100">
+                {mostCriticalThreat?.subject ||
+                  mostCriticalThreat?.id ||
+                  "No active incident"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {mostCriticalThreat?.severity || "Safe posture"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Analyst Next Step
+              </p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">
+                {analystNextStep}
+              </p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Overview Section */}
-      <div className="animate-fade-in-delay-1">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
-            <div className="w-1 h-6 bg-gradient-to-b from-emerald-500 to-cyan-500 rounded-full" />
-            System Overview
-          </h2>
-          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
-            Live Metrics
-          </span>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Total Threats Detected"
-            value={
-              stats.totalThreats || stats.phishingDetected + liveThreats.length
-            }
-          />
-          <StatsCard
-            title="Active Threats"
-            value={stats.activeThreats || liveThreats.length}
-          />
-          <StatsCard
-            title="Resolved Threats"
-            value={
-              stats.resolvedThreats ||
-              stats.autoResolved + responseActions.length
-            }
-          />
-          <StatsCard
-            title="Detection Accuracy"
-            value={
-              testResults.length > 0
-                ? `${Math.round(
-                    (testResults.filter((r) => r && r.correct).length /
-                      testResults.length) *
-                      100
-                  )}%`
-                : `${stats.accuracy || 97.2}%`
-            }
-          />
-        </div>
-      </div>
+        <div className="mt-5 flex flex-col gap-3 border-t border-slate-800/80 pt-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${
+                demoRunning
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                  : "border-slate-700 bg-slate-950/40 text-slate-400"
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  demoRunning ? "bg-emerald-400" : "bg-slate-500"
+                }`}
+              />
+              {demoRunning ? "Demo Active" : "Standby"}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-200">
+              <Bot className="h-3.5 w-3.5" />
+              {safeResponseActions.length} automated actions in feed
+            </span>
+          </div>
 
-      {/* Live Testing Panel */}
-      <div className="animate-fade-in-delay-2">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
-            <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
-            Live Testing & Simulation
-          </h2>
-          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
-            Automated Testing
+          <div className="flex flex-wrap items-center gap-2">
+            {!demoRunning ? (
+              <button
+                onClick={handleStartDemo}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200 transition-all hover:bg-emerald-500/25"
+              >
+                <Play className="h-4 w-4" />
+                Start Demo
+              </button>
+            ) : (
+              <button
+                onClick={handleStopDemo}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-200 transition-all hover:bg-red-500/25"
+              >
+                <Square className="h-4 w-4" />
+                Stop Demo
+              </button>
+            )}
+
+            <button
+              onClick={handleRunBatch}
+              disabled={batchLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition-all hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Zap className="h-4 w-4" />
+              {batchLoading ? "Processing..." : "Run Test Batch"}
+            </button>
+
+            <button
+              onClick={handleRefresh}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/40 px-3 py-2 text-sm font-semibold text-slate-300 transition-all hover:bg-slate-800"
+              title="Refresh dashboard data"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          title="Active Threats"
+          value={activeThreatCount}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          description={
+            activeThreatCount > 0
+              ? "Open detections requiring analyst attention"
+              : "No active threats in the live feed"
+          }
+          tone={activeThreatCount > 0 ? "critical" : "safe"}
+        />
+        <StatsCard
+          title="Automated Actions"
+          value={automatedActionCount}
+          icon={<ClipboardCheck className="h-5 w-5" />}
+          description="Containment and response actions recorded by ACDS"
+          tone="safe"
+        />
+        <StatsCard
+          title="Detection Accuracy"
+          value={`${detectionAccuracy}%`}
+          icon={<Target className="h-5 w-5" />}
+          description="Current model accuracy from available test results"
+          tone="info"
+        />
+        <StatsCard
+          title="System Health"
+          value={systemHealth}
+          icon={<Activity className="h-5 w-5" />}
+          description="Operational posture based on live threat state"
+          tone={systemHealth === "Critical" ? "critical" : systemHealth === "Monitoring" ? "warning" : "safe"}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <ThreatResponseFeed />
+        </div>
+        <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)]">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+                AI Analyst Summary
+              </p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-100">
+                Current Security Posture
+              </h2>
+            </div>
+            <Bot className="h-5 w-5 text-cyan-300" />
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Are we safe right now?
+              </p>
+              <p
+                className={`mt-2 text-sm font-semibold ${
+                  activeThreatCount > 0 ? "text-amber-300" : "text-emerald-300"
+                }`}
+              >
+                {activeThreatCount > 0
+                  ? "ACDS is monitoring active threats."
+                  : "No active threats are currently reported."}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Most critical incident
+              </p>
+              <p className="mt-2 text-sm font-medium text-slate-100">
+                {mostCriticalThreat?.subject || "No critical incident selected"}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                {mostCriticalThreat
+                  ? `${mostCriticalThreat.severity || "Unknown"} severity from ${
+                      mostCriticalThreat.module || "detection"
+                    }`
+                  : "Live detections will appear here when available."}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-slate-950/45 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Analyst action
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {analystNextStep}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+              Summary uses existing dashboard telemetry and response data.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-5">
+        <div className="xl:col-span-3">
+          <ThreatMonitoringTable />
+        </div>
+        <div className="xl:col-span-2">
+          <IncidentDetails />
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Validation
+            </p>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Live Testing and Simulation
+            </h2>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-400">
+            <ArrowRight className="h-3.5 w-3.5" />
+            Existing test workflow
           </span>
         </div>
         <LiveTestingPanel />
-      </div>
+      </section>
 
-      {/* Threat Response & Activity Section */}
-      <div className="animate-fade-in-delay-3">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-200 uppercase tracking-wide flex items-center gap-3">
-            <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-orange-500 rounded-full" />
-            Real-Time Threat Intelligence
-          </h2>
-          <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
-            Active Monitoring
-          </span>
+      <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <SystemActivityLogs />
+        <div className="grid grid-cols-1 gap-5">
+          <ThreatsOverTimeChart />
+          <ThreatTypesChart />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ThreatResponseFeed />
-          <SystemActivityLogs />
-        </div>
-      </div>
+      </section>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ThreatsOverTimeChart />
-        <ThreatTypesChart />
-      </div>
-
-      {/* Threat Monitoring & Incident Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
-          <ThreatMonitoringTable />
-        </div>
-        <div className="lg:col-span-2">
-          <IncidentDetails />
-        </div>
-      </div>
-
-      {/* Model Performance Section */}
       <ModelPerformanceMetrics />
-
-      {/* Model Performance Logs */}
       <ModelPerformanceLogs />
     </div>
   );
