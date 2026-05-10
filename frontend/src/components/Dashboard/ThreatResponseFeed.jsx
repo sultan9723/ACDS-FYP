@@ -69,15 +69,15 @@ const ThreatResponseFeed = () => {
   const getSeverityColor = (severity) => {
     switch (severity?.toUpperCase()) {
       case "CRITICAL":
-        return "text-red-500 bg-red-500/20 border border-red-500/30";
+        return "text-red-300 bg-red-500/15 border border-red-500/30";
       case "HIGH":
-        return "text-orange-500 bg-orange-500/20 border border-orange-500/30";
+        return "text-red-300 bg-red-500/15 border border-red-500/30";
       case "MEDIUM":
-        return "text-yellow-500 bg-yellow-500/20 border border-yellow-500/30";
+        return "text-amber-300 bg-amber-500/15 border border-amber-500/30";
       case "LOW":
-        return "text-green-500 bg-green-500/20 border border-green-500/30";
+        return "text-emerald-300 bg-emerald-500/15 border border-emerald-500/30";
       default:
-        return "text-slate-400 bg-slate-500/20 border border-slate-500/30";
+        return "text-cyan-300 bg-cyan-500/10 border border-cyan-500/25";
     }
   };
 
@@ -123,7 +123,7 @@ const ThreatResponseFeed = () => {
   };
 
   return (
-    <div className="relative bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-red-500/20 rounded-xl p-6 transition-all duration-300 group overflow-hidden">
+    <div className="relative bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 hover:border-red-500/20 rounded-xl p-5 sm:p-6 transition-all duration-300 group overflow-hidden h-full">
       {/* Decorative accent */}
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-500/50 via-orange-500/30 to-transparent" />
 
@@ -138,7 +138,7 @@ const ThreatResponseFeed = () => {
               Threat Response Feed
             </h2>
             <p className="text-sm text-slate-400">
-              Real-time detection & automated responses
+              Primary operational feed for detections and response actions
             </p>
           </div>
         </div>
@@ -214,7 +214,7 @@ const ThreatResponseFeed = () => {
                     </p>
                     <div className="flex items-center flex-wrap gap-2 mt-3">
                       <span className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getModuleColor(item.data.module || item.data.type || "phishing")}`}>
-                        {getModuleIcon(item.data.module || item.data.type || "phishing")} {item.data.module || item.data.type || "phishing"}
+                        {item.data.module || item.data.type || "phishing"}
                       </span>
                       <span
                         className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getSeverityColor(
@@ -261,7 +261,7 @@ const ThreatResponseFeed = () => {
                     </p>
                     <div className="mb-2">
                       <span className={`text-xs px-2.5 py-1 rounded-md font-semibold uppercase ${getModuleColor(item.data.module || "phishing")}`}>
-                        {getModuleIcon(item.data.module || "phishing")} {item.data.module || "phishing"}
+                        {item.data.module || "phishing"}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -283,11 +283,14 @@ const ThreatResponseFeed = () => {
         </div>
       ) : (
         // Empty State
-        <div className="text-center py-12 text-slate-500">
-          <ShieldCheckIcon className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p>No threat activity yet</p>
-          <p className="text-sm mt-1">
-            Run a live test to see real-time threat detection
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-6 py-10 text-center">
+          <ShieldCheckIcon className="h-12 w-12 mx-auto mb-3 text-emerald-300/70" />
+          <p className="text-sm font-semibold text-emerald-200">
+            No active threat activity in the live feed
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">
+            ACDS is ready to surface detections, containment steps, and analyst
+            follow-up here as soon as telemetry arrives.
           </p>
         </div>
       )}

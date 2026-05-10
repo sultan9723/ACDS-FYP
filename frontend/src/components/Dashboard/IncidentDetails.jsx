@@ -7,18 +7,27 @@ const IncidentDetails = () => {
 
   if (!selectedIncident) {
     return (
-      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl p-6 h-full flex items-center justify-center">
-        <p className="text-slate-500 text-sm">
-          Select an email to view details
-        </p>
+      <div className="bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 rounded-xl p-6 h-full flex items-center justify-center">
+        <div className="max-w-sm text-center">
+          <p className="text-sm font-medium text-slate-300">
+            No incident selected
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Select a row from Threat Monitoring to review evidence,
+            confidence, automated action, and analyst feedback.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl h-full">
-      <div className="p-4 border-b border-slate-800">
-        <h3 className="text-sm font-semibold text-emerald-400/80">
+    <div className="bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 rounded-xl h-full">
+      <div className="p-4 border-b border-slate-800/80">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Analyst Review
+        </p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-100">
           Incident Details
         </h3>
       </div>

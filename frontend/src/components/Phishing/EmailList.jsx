@@ -29,23 +29,28 @@ const EmailList = () => {
     switch (severity?.toUpperCase()) {
       case "HIGH":
       case "CRITICAL":
-        return "bg-red-900/50 text-red-400 border-red-900";
+        return "bg-red-500/15 text-red-200 border-red-500/30";
       case "MEDIUM":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-900";
+        return "bg-amber-500/15 text-amber-200 border-amber-500/30";
       case "LOW":
       case "SAFE":
-        return "bg-green-900/50 text-green-400 border-green-900";
+        return "bg-emerald-500/15 text-emerald-200 border-emerald-500/30";
       default:
-        return "bg-slate-900/50 text-slate-400 border-slate-700";
+        return "bg-cyan-500/10 text-cyan-200 border-cyan-500/25";
     }
   };
 
   return (
-    <Card className="bg-slate-900/50 border-slate-800 h-full">
+    <Card className="bg-slate-900/70 border-slate-800/80">
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-slate-200">Scanned Emails</CardTitle>
-        <span className="text-xs text-slate-500">
-          {allEmails.length} emails scanned
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Results Queue
+          </p>
+          <CardTitle className="mt-1 text-slate-100">Scanned Emails</CardTitle>
+        </div>
+        <span className="rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-xs text-slate-400">
+          {allEmails.length} scanned
         </span>
       </CardHeader>
       <CardContent className="p-0">
@@ -54,9 +59,14 @@ const EmailList = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500"></div>
           </div>
         ) : allEmails.length === 0 ? (
-          <div className="text-center py-12 text-slate-500">
-            <p>No emails scanned yet</p>
-            <p className="text-sm mt-1">Run demo mode to scan sample emails</p>
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-medium text-slate-300">
+              No emails scanned yet
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Start demo mode from the dashboard to populate phishing detections
+              and analyst evidence.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -75,37 +85,37 @@ const EmailList = () => {
                   <tr
                     key={email.id}
                     onClick={() => handleRowClick(email.id)}
-                    className="hover:bg-slate-800/30 transition-colors cursor-pointer"
+                    className="hover:bg-slate-800/40 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-4 text-slate-300 break-all max-w-[200px]">
+                    <td className="px-6 py-3 text-slate-300 break-all max-w-[220px]">
                       {email.sender || email.source || "Unknown"}
                     </td>
-                    <td className="px-6 py-4 text-slate-300 max-w-[200px] truncate">
+                    <td className="px-6 py-3 text-slate-300 max-w-[260px] truncate">
                       {email.subject || email.description || "No subject"}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <span className={`text-xs px-2 py-1 rounded border ${getSeverityColor(email.severity)}`}>
                         {email.severity || "N/A"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-full bg-slate-700 rounded-full h-1.5 max-w-[60px]">
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 max-w-[72px]">
                           <div
                             className={`h-1.5 rounded-full ${
                               email.prediction === "Phishing"
                                 ? "bg-red-500"
-                                : "bg-green-500"
+                                : "bg-emerald-500"
                             }`}
                             style={{ width: `${Math.min(email.confidence > 1 ? email.confidence : email.confidence * 100, 100)}%` }}
                           ></div>
                         </div>
-                        <span className="text-xs text-slate-400">
+                        <span className="rounded-full border border-slate-700 bg-slate-950/40 px-2 py-0.5 text-xs text-slate-300">
                           {formatConfidence(email.confidence)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <Badge
                         variant={
                           email.prediction === "Phishing"

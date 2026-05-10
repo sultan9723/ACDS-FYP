@@ -19,9 +19,12 @@ const ThreatMonitoringTable = () => {
   };
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 rounded-xl">
-      <div className="p-4 border-b border-slate-800">
-        <h3 className="text-sm font-semibold text-emerald-400/80">
+    <div className="bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 rounded-xl h-full">
+      <div className="p-4 border-b border-slate-800/80">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Investigation Queue
+        </p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-100">
           Threat Monitoring
         </h3>
       </div>
@@ -37,29 +40,43 @@ const ThreatMonitoringTable = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {safeThreats.map((threat) => (
-              <tr
-                key={threat?.id || Math.random()}
-                onClick={() => threat?.id && handleRowClick(threat.id)}
-                className="hover:bg-emerald-500/5 transition-colors cursor-pointer"
-              >
-                <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                  {threat?.time || "N/A"}
-                </td>
-                <td className="px-4 py-3 text-slate-300">
-                  {threat?.status === "Phishing" ? "Phishing" : "Safe"}
-                </td>
-                <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                  {threat?.sourceIp || "192.152.0." + (threat?.id || 0)}
-                </td>
-                <td className="px-4 py-3 text-slate-300">
-                  {threat?.sender?.split("@")[0] || "Unknown"}
-                </td>
-                <td className="px-4 py-3 text-slate-300">
-                  {threat?.confidence || 0}
+            {safeThreats.length > 0 ? (
+              safeThreats.map((threat) => (
+                <tr
+                  key={threat?.id || Math.random()}
+                  onClick={() => threat?.id && handleRowClick(threat.id)}
+                  className="hover:bg-emerald-500/5 transition-colors cursor-pointer"
+                >
+                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">
+                    {threat?.time || "N/A"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-300">
+                    {threat?.status === "Phishing" ? "Phishing" : "Safe"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400 font-mono text-xs">
+                    {threat?.sourceIp || "192.152.0." + (threat?.id || 0)}
+                  </td>
+                  <td className="px-4 py-3 text-slate-300">
+                    {threat?.sender?.split("@")[0] || "Unknown"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-300">
+                    {threat?.confidence || 0}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-slate-300">
+                    No incidents are waiting for review
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    New detections will populate this investigation queue for
+                    analyst triage.
+                  </p>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

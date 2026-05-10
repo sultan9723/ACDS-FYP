@@ -22,16 +22,16 @@ const ThreatTypesChart = () => {
   const topThreats = safeData.slice(0, 3);
 
   return (
-    <div className="relative bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-emerald-500/20 rounded-xl p-4 transition-all duration-300 overflow-hidden">
+    <div className="relative bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 hover:border-emerald-500/20 rounded-xl p-4 transition-all duration-300 overflow-hidden">
       {/* Decorative accent */}
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-teal-500/50 via-emerald-500/30 to-transparent" />
 
       <h3 className="text-sm font-semibold text-emerald-400/80 mb-4">
         Top Threat Types
       </h3>
-      <div className="flex gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
         {/* Legend */}
-        <div className="flex flex-col justify-center space-y-3">
+        <div className="flex flex-wrap gap-3 sm:flex-col sm:justify-center sm:space-y-3 sm:gap-0">
           {topThreats.map((item, index) => (
             <div key={item?.name || index} className="flex items-center gap-2">
               <div
