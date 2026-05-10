@@ -231,7 +231,11 @@ const ThreeLayerDetectionVisualization = ({ result }) => {
               </div>
             </div>
             <span className="text-xs px-3 py-1 bg-slate-900/50 text-slate-400 rounded border border-slate-700">
-              {layer2.status === "ready" ? "Analysis Complete" : layer2.status || "Waiting for input"}
+              {layer2.status === "success"
+                ? "Analysis Complete"
+                : layer2.status === "ready"
+                  ? "Waiting for input"
+                  : layer2.status || "Waiting for input"}
             </span>
           </div>
         </CardHeader>
