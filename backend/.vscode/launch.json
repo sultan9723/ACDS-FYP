@@ -1,0 +1,66 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI Server",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "backend.main:app",
+        "--reload",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "jinja": true,
+      "justMyCode": true,
+      "envFile": "${workspaceFolder}/../.env",
+      "cwd": "${workspaceFolder}/.."
+    },
+    {
+      "name": "Debug Current Test",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${file}",
+        "-v",
+        "-s",
+        "--tb=short"
+      ],
+      "cwd": "${workspaceFolder}/..",
+      "envFile": "${workspaceFolder}/../.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run All Backend Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/",
+        "backend/tests/",
+        "-v",
+        "--tb=short"
+      ],
+      "cwd": "${workspaceFolder}/..",
+      "envFile": "${workspaceFolder}/../.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: Attach",
+      "type": "python",
+      "request": "attach",
+      "port": 5678,
+      "host": "localhost",
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/..",
+          "remoteRoot": "/app"
+        }
+      ]
+    }
+  ]
+}

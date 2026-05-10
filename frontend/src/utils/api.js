@@ -4,7 +4,7 @@ import emailDetails from "../mocks/emailDetails.json";
 
 // Create an axios instance
 // Use environment variable for API URL, fallback to localhost
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://127.0.0.1:8010/api/v1";
 const AUTH_TOKEN_KEY = "authToken";
 const AUTH_USER_KEY = "authUser";
 
@@ -564,7 +564,7 @@ export const getTestReport = async (reportId) => {
 
 export const checkBackendHealth = async () => {
   try {
-    const healthUrl = `${API_URL.replace(/\/api\/v1\/?$/, "")}/health`;
+    const healthUrl = `${API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")}/health`;
     const response = await api.get(healthUrl);
     return { connected: true, ...response.data };
   } catch (error) {

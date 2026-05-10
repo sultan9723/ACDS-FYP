@@ -262,14 +262,14 @@ pip install -r requirements.txt`}
                       </p>
                       <CodeBlock
                         code={`cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000`}
+uvicorn main:app --reload --host 0.0.0.0 --port 8010`}
                         language="bash"
                         id="start-backend"
                       />
                       <p className="text-slate-400 text-sm mt-2">
                         API will be available at{" "}
                         <code className="text-emerald-400 bg-slate-800 px-2 py-0.5 rounded">
-                          http://localhost:8000
+                          http://localhost:8010
                         </code>
                       </p>
                     </div>
@@ -407,7 +407,7 @@ npm run dev`}
                 <div>
                   <p className="text-slate-400 text-sm">Base URL</p>
                   <code className="text-white font-mono">
-                    http://localhost:8000/api/v1
+                    http://localhost:8010/api/v1
                   </code>
                 </div>
                 <div className="flex items-center gap-2">
@@ -688,7 +688,7 @@ docker-compose down`}
                 <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <p className="text-blue-400 text-sm">
                     <strong>Note:</strong> Docker Compose will automatically set
-                    up the backend API (port 8000) and frontend dashboard (port
+                    up the backend API (port 8010) and frontend dashboard (port
                     5173).
                   </p>
                 </div>
@@ -730,7 +730,7 @@ pip install -r requirements.txt
 
 # Start the backend server
 cd backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000`}
+uvicorn main:app --reload --host 0.0.0.0 --port 8010`}
                       language="bash"
                       id="backend-manual"
                     />
@@ -775,7 +775,7 @@ npm run build`}
                       <p className="text-slate-400 text-sm">
                         Visit{" "}
                         <code className="text-emerald-400 bg-slate-800 px-2 py-0.5 rounded">
-                          http://localhost:8000/docs
+                          http://localhost:8010/docs
                         </code>{" "}
                         to see the Swagger UI
                       </p>
@@ -803,7 +803,7 @@ npm run build`}
                       <p className="text-slate-400 text-sm">
                         Test API with{" "}
                         <code className="text-emerald-400 bg-slate-800 px-2 py-0.5 rounded">
-                          curl http://localhost:8000/api/v1/health
+                          curl http://localhost:8010/api/v1/health
                         </code>
                       </p>
                     </div>
@@ -866,7 +866,7 @@ npm run build`}
                         },
                         {
                           name: "API_PORT",
-                          default: "8000",
+                          default: "8010",
                           desc: "Backend API server port",
                         },
                         {
@@ -922,7 +922,7 @@ npm run build`}
 
 # API Server Settings
 API_HOST=0.0.0.0
-API_PORT=8000
+API_PORT=8010
 
 # Logging
 LOG_LEVEL=INFO
@@ -936,7 +936,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 RATE_LIMIT=100
 
 # Frontend
-VITE_API_URL=http://localhost:8000/api/v1`}
+VITE_API_URL=http://localhost:8010/api/v1`}
                   language="bash"
                   id="env-sample"
                 />

@@ -52,14 +52,14 @@ app.add_middleware(
 
 # Import route modules
 from api.routes import auth, threats, dashboard, ransomware, malware, feedback, reports, testing, demo, malware_demo, credential_stuffing
-from api.routes.auth import get_current_admin
+from api.routes.auth import get_current_user
 
 # Include routers with /api/v1 prefix
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(threats.router, prefix="/api/v1")
 app.include_router(ransomware.router, prefix="/api/v1")  
 app.include_router(malware.router, prefix="/api/v1")
-app.include_router(dashboard.router, prefix="/api/v1", dependencies=[Depends(get_current_admin)])
+app.include_router(dashboard.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
 app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(testing.router, prefix="/api/v1")
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=8010,
         reload=True,
         log_level="info"
     )

@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 import time
 
 # Test configuration
-BASE_URL = "http://127.0.0.1:8000/api/v1"
+BASE_URL = "http://127.0.0.1:8010/api/v1"
 DEFAULT_ADMIN_EMAIL = "admin@acds.com"
 DEFAULT_ADMIN_PASSWORD = "admin123"
 JWT_SECRET_KEY = "acds-secret-key"

@@ -1,2 +1,45 @@
 {
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "editor.formatOnSave": true
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [
+    "tests",
+    "backend/tests"
+  ],
+  "flake8.args": [
+    "--max-line-length=88",
+    "--extend-ignore=E203,W503"
+  ],
+  "black-formatter.args": [
+    "--line-length=88"
+  ],
+  "isort.args": [
+    "--profile",
+    "black",
+    "--line-length",
+    "88"
+  ],
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.venv": true
+  },
+  "editor.rulers": [
+    88
+  ]
 }

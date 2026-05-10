@@ -10,7 +10,7 @@ Scope:
 
 Notes:
 - These are API-level ingestion tests.
-- Backend should be running at http://127.0.0.1:8000
+- Backend should be running at http://127.0.0.1:8010
 """
 
 from datetime import datetime, timezone, timedelta
@@ -20,7 +20,7 @@ import pytest
 import requests
 
 
-BASE_URL = "http://127.0.0.1:8000/api/v1"
+BASE_URL = "http://127.0.0.1:8010/api/v1"
 
 
 class TestDataIngestion:

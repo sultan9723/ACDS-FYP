@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone
 
 # API Base URL
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = "http://localhost:8010/api/v1"
 RANSOMWARE_API = f"{BASE_URL}/ransomware"
 
 

@@ -35,7 +35,7 @@ try:
         DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
     )
 except ImportError:
-    JWT_SECRET_KEY = "acds-secret-key"
+    JWT_SECRET_KEY = "acds-secret-key-change-in-production-2024"
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRATION_HOURS = 24
     DEFAULT_ADMIN_EMAIL = "admin@acds.com"
