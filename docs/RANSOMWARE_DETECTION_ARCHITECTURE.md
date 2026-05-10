@@ -333,9 +333,9 @@ RANSOMWARE_EXTENSIONS = {
 
 - **Model 1:** [ransomwaremodel.ipynb](../ml_training/ransomwaremodel.ipynb)
 - **Model 2:** [pe_header_ransomware_model.ipynb](../ml_training/pe_header_ransomware_model.ipynb)
-- **Layer 3:** [encryption_detector.py](./encryption_detector.py)
+- **Layer 3:** [encryption_detector.py](../backend/orchestration/encryption_detector.py)
 - **Use Case:** [UC-04: Detect Ransomware](../../docs/SYSTEM_DESIGN.md)
-- **API Integration:** [backend/api/routes/ransomware.py](../api/routes/ransomware.py)
+- **API Integration:** [backend/api/routes/ransomware.py](../backend/api/routes/ransomware.py)
 
 ---
 
