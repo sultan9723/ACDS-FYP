@@ -234,10 +234,15 @@ class PEHeaderExtractor:
         
         import math
         
+        data_len = len(data)
+        byte_counts = [0] * 256
+        for byte in data:
+            byte_counts[byte] += 1
+        
         entropy = 0.0
-        for i in range(256):
-            freq = data.count(bytes([i])) / len(data)
-            if freq > 0:
+        for count in byte_counts:
+            if count > 0:
+                freq = count / data_len
                 entropy -= freq * math.log2(freq)
         
         return entropy
