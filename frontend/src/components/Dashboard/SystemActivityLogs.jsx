@@ -144,12 +144,12 @@ const SystemActivityLogs = () => {
   };
 
   return (
-    <div className="relative bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-purple-500/20 rounded-xl p-6 transition-all duration-300 group overflow-hidden">
+    <div className="relative bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 hover:border-cyan-500/20 rounded-xl p-5 sm:p-6 transition-all duration-300 group overflow-hidden">
       {/* Decorative accent */}
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500/50 via-indigo-500/30 to-transparent" />
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between mb-4">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-gradient-to-br from-purple-500/30 to-indigo-500/20 rounded-lg border border-purple-500/20">
             <DocumentTextIcon className="h-6 w-6 text-purple-400" />
@@ -169,9 +169,9 @@ const SystemActivityLogs = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Log Source Toggle */}
-          <div className="flex bg-slate-800 rounded-lg p-0.5">
+          <div className="flex bg-slate-950/60 border border-slate-800 rounded-lg p-0.5">
             <button
               onClick={() => setLogSource("activity")}
               className={`px-2 py-1 text-xs rounded-md transition-colors ${
@@ -195,12 +195,12 @@ const SystemActivityLogs = () => {
           </div>
 
           {/* Filter */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <FunnelIcon className="h-4 w-4 text-slate-500" />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="bg-slate-950/60 border border-slate-700 rounded-lg px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             >
               <option value="all">All Events</option>
               <option value="email_scanned">Scans</option>
@@ -218,7 +218,7 @@ const SystemActivityLogs = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing || testRunning}
-            className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+            className="p-2 bg-slate-950/60 border border-slate-700 hover:bg-slate-800 rounded-lg transition-colors"
           >
             <ArrowPathIcon
               className={`h-4 w-4 text-slate-400 ${

@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 224 71% 4%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 7%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 7%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 158 64% 52%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 160 84% 39%;
+    --accent: 188 86% 43%;
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 158 64% 52%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 160 84% 39%;
 
     /* Emerald accents */
     --emerald-50: 152 81% 96%;
@@ -51,10 +51,18 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #052e16 100%);
+    @apply bg-background text-foreground antialiased;
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28rem),
+      linear-gradient(135deg, #020617 0%, #07111f 48%, #0b1220 100%);
     min-height: 100vh;
     color: #e2e8f0;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  ::selection {
+    background: rgba(16, 185, 129, 0.28);
+    color: #f8fafc;
   }
 }
 
@@ -64,14 +72,18 @@
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #020617;
 }
 ::-webkit-scrollbar-thumb {
-  background: #10b981;
+  background: #334155;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #34d399;
+  background: #10b981;
+}
+
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950;
 }
 
 /* Page Transitions */

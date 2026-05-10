@@ -330,19 +330,22 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
 
   const resultTone =
     resultVerdict === "RANSOMWARE_DETECTED"
-      ? "border-red-800 bg-red-900/20"
+      ? "border-red-500/30 bg-red-500/10"
       : resultVerdict === "SUSPICIOUS"
-      ? "border-yellow-800 bg-yellow-900/20"
-      : "border-green-800 bg-green-900/20";
+      ? "border-amber-500/30 bg-amber-500/10"
+      : "border-emerald-500/30 bg-emerald-500/10";
 
   return (
     <div className="space-y-4">
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card className="bg-slate-900/70 border-slate-800/80">
         <CardHeader>
-          <CardTitle className="text-slate-200 text-base">3-Layer Detection Mode</CardTitle>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Primary Workflow
+          </p>
+          <CardTitle className="text-slate-100 text-base">3-Layer Detection Mode</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {[
               { id: "command", label: "Layer 1 Only", desc: "Command behavior analysis" },
               { id: "encryption", label: "Layer 3 Only", desc: "Encryption detection" },
@@ -363,8 +366,8 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                 }}
                 className={`p-3 rounded-lg border-2 transition-all text-left ${
                   detectingMode === mode.id
-                    ? "border-emerald-500 bg-emerald-900/20"
-                    : "border-slate-700 bg-slate-800/20 hover:border-slate-600"
+                    ? "border-emerald-500/60 bg-emerald-500/15"
+                    : "border-slate-700 bg-slate-950/30 hover:border-slate-600"
                 }`}
               >
                 <p className="text-sm font-semibold text-slate-200">{mode.label}</p>
@@ -381,7 +384,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                 value={commandInput}
                 onChange={(event) => setCommandInput(event.target.value)}
                 placeholder="e.g., cmd.exe /c vssadmin delete shadows /all"
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/60 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none focus:border-emerald-500/80"
               />
               <p className="text-xs text-slate-500 mt-1">{commandInput.length} characters</p>
             </div>
@@ -397,7 +400,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                 value={binaryPath}
                 onChange={(event) => setBinaryPath(event.target.value)}
                 placeholder="backend/data/quarantine/sample.exe"
-                className="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950/60 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none focus:border-emerald-500/80"
               />
               <p className="text-xs text-slate-500 mt-1">
                 Layer 2 accepts files stored in backend/data/quarantine.
@@ -408,7 +411,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
           {(detectingMode === "encryption" || detectingMode === "full") && (
             <div>
               <label className="text-xs text-slate-500 uppercase block mb-2">Simulated File Activities</label>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <input
                   type="range"
                   min="10"
@@ -422,7 +425,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                   aria-valuenow={fileCount}
                   className="flex-1 h-2 bg-slate-700 rounded-lg cursor-pointer accent-emerald-500"
                 />
-                <span className="text-sm font-semibold text-slate-300 min-w-[50px]">{fileCount} files</span>
+                <span className="text-sm font-semibold text-slate-300 sm:min-w-[72px]">{fileCount} files</span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
                 Simulates {fileCount} rapid file modifications with ransomware-like extensions.
@@ -440,7 +443,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
             type="button"
             onClick={handleThreeLayerDetection}
             disabled={scanDisabled}
-            className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="w-full px-4 py-2 border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:bg-slate-800 disabled:text-slate-500 text-emerald-100 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
           >
             {detecting ? (
               <>
@@ -496,9 +499,12 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card className="bg-slate-900/70 border-slate-800/80">
         <CardHeader>
-          <CardTitle className="text-slate-200 text-base">Executable File Analysis</CardTitle>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Executable Workflow
+          </p>
+          <CardTitle className="text-slate-100 text-base">Executable File Analysis</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
@@ -513,7 +519,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
               handleExeSelection(event.dataTransfer.files?.[0]);
             }}
             className={`border-2 border-dashed rounded-lg p-5 text-center transition-colors ${
-              dragActive ? "border-emerald-500 bg-emerald-900/20" : "border-slate-700 bg-slate-800/20"
+              dragActive ? "border-emerald-500 bg-emerald-500/15" : "border-slate-700 bg-slate-950/30"
             }`}
           >
             <p className="text-sm font-medium text-slate-200">Drop an EXE sample here</p>
@@ -538,7 +544,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                 type="button"
                 onClick={handleExeUpload}
                 disabled={uploadingExe}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors"
+                className="px-4 py-2 border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:bg-slate-800 disabled:text-slate-500 text-emerald-100 text-sm font-medium rounded-lg transition-colors"
               >
                 {uploadingExe ? "Analyzing..." : "Analyze EXE"}
               </button>
@@ -569,8 +575,8 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
                     uploadResult.overall_verdict === "RANSOMWARE_DETECTED"
                       ? "text-red-400"
                       : uploadResult.overall_verdict === "SUSPICIOUS"
-                      ? "text-yellow-400"
-                      : "text-green-400"
+                      ? "text-amber-400"
+                      : "text-emerald-400"
                   }`}
                 >
                   {uploadResult.overall_verdict?.replace(/_/g, " ")}
@@ -595,7 +601,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card className="bg-slate-900/70 border-slate-800/80">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-slate-200 text-base">Live Monitoring</CardTitle>

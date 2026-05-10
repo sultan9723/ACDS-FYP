@@ -83,27 +83,28 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
   const getSeverityColor = (severity) => {
     switch (severity?.toUpperCase()) {
       case "CRITICAL":
-        return "bg-red-900/50 text-red-400 border-red-900";
+        return "bg-red-500/15 text-red-200 border-red-500/30";
       case "HIGH":
-        return "bg-orange-900/50 text-orange-400 border-orange-900";
+        return "bg-rose-500/15 text-rose-200 border-rose-500/30";
       case "MEDIUM":
-        return "bg-yellow-900/50 text-yellow-400 border-yellow-900";
+        return "bg-amber-500/15 text-amber-200 border-amber-500/30";
       case "LOW":
       case "SAFE":
-        return "bg-green-900/50 text-green-400 border-green-900";
+        return "bg-emerald-500/15 text-emerald-200 border-emerald-500/30";
       default:
-        return "bg-slate-900/50 text-slate-400 border-slate-700";
+        return "bg-cyan-500/10 text-cyan-200 border-cyan-500/25";
     }
   };
 
   return (
-    <div className="space-y-4 h-full flex flex-col">
+    <div className="space-y-4 flex flex-col">
       {/* Scan Input */}
-      <Card className="bg-slate-900/50 border-slate-800">
+      <Card className="bg-slate-900/70 border-slate-800/80">
         <CardHeader>
-          <CardTitle className="text-slate-200 text-base">
-            Scan Command
-          </CardTitle>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Primary Workflow
+          </p>
+          <CardTitle className="text-slate-100 text-base">Scan Command</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
@@ -113,12 +114,12 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
               onChange={(e) => setScanInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleScan()}
               placeholder="Enter process command to scan... e.g. vssadmin delete shadows /all"
-              className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-2 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="flex-1 bg-slate-950/60 border border-slate-700 text-slate-200 text-sm rounded-lg px-4 py-2 placeholder-slate-600 focus:outline-none focus:border-emerald-500/80"
             />
             <button
               onClick={handleScan}
               disabled={scanning || !scanInput.trim()}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              className="px-4 py-2 border border-emerald-500/30 bg-emerald-500/20 hover:bg-emerald-500/30 disabled:bg-slate-800 disabled:text-slate-500 text-emerald-100 text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               {scanning ? (
                 <>
@@ -137,7 +138,7 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
               className={`mt-3 px-4 py-3 rounded-lg border text-sm flex items-center justify-between ${
                 scanResult.pipeline_results?.detection?.is_ransomware
                   ? "bg-red-900/30 border-red-800 text-red-300"
-                  : "bg-green-900/30 border-green-800 text-green-300"
+                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
               }`}
             >
               <span>
@@ -162,27 +163,32 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
       </Card>
 
       {/* Scan History Table */}
-      <Card className="bg-slate-900/50 border-slate-800 flex-1 min-h-0">
+      <Card className="bg-slate-900/70 border-slate-800/80">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-slate-200">Scan History</CardTitle>
-          <span className="text-xs text-slate-500">
-            {scans.length} commands scanned
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Results Queue
+            </p>
+            <CardTitle className="mt-1 text-slate-100">Scan History</CardTitle>
+          </div>
+          <span className="rounded-full border border-slate-700 bg-slate-950/40 px-3 py-1 text-xs text-slate-400">
+            {scans.length} commands
           </span>
         </CardHeader>
-        <CardContent className="p-0 overflow-y-auto max-h-[400px]">
+        <CardContent className="p-0 overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
             </div>
           ) : scans.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              <p>No commands scanned yet</p>
-              <p className="text-sm mt-1">
+            <div className="px-6 py-12 text-center">
+              <p className="text-sm font-medium text-slate-300">No commands scanned yet</p>
+              <p className="text-sm mt-2 text-slate-500">
                 Use the scanner above to analyze a command
               </p>
             </div>
           ) : (
-            <table className="w-full text-sm text-left">
+            <table className="w-full min-w-[840px] text-sm text-left">
               <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-800">
                 <tr>
                   <th className="px-6 py-3">Command</th>
@@ -197,15 +203,15 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
                   <tr
                     key={scan.id}
                     onClick={() => onSelectThreat?.(scan.raw_result || scan)}
-                    className="hover:bg-slate-800/30 transition-colors cursor-pointer"
+                    className="hover:bg-slate-800/40 transition-colors cursor-pointer"
                   >
-                    <td className="px-6 py-4 text-slate-300 max-w-[220px] truncate font-mono text-xs">
+                    <td className="px-6 py-3 text-slate-300 max-w-[220px] truncate font-mono text-xs">
                       {scan.command_preview || "—"}
                     </td>
-                    <td className="px-6 py-4 text-slate-400 text-xs">
+                    <td className="px-6 py-3 text-slate-400 text-xs">
                       {scan.source_host || "unknown"}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <span
                         className={`text-xs px-2 py-1 rounded border ${getSeverityColor(
                           scan.severity
@@ -214,14 +220,14 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
                         {scan.severity || "N/A"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-full bg-slate-700 rounded-full h-1.5 max-w-[60px]">
+                        <div className="w-full bg-slate-800 rounded-full h-1.5 max-w-[72px]">
                           <div
                             className={`h-1.5 rounded-full ${
                               scan.prediction === "Ransomware"
                                 ? "bg-red-500"
-                                : "bg-green-500"
+                                : "bg-emerald-500"
                             }`}
                             style={{
                               width: `${Math.min(
@@ -233,12 +239,12 @@ const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) =>
                             }}
                           ></div>
                         </div>
-                        <span className="text-xs text-slate-400">
+                        <span className="rounded-full border border-slate-700 bg-slate-950/40 px-2 py-0.5 text-xs text-slate-300">
                           {formatConfidence(scan.confidence)}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <Badge
                         variant={
                           scan.prediction === "Ransomware"

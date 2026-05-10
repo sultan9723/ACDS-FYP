@@ -28,9 +28,11 @@ const initialEvent = {
 };
 
 const severityClass = {
-  HIGH: "bg-red-900/40 text-red-300 border-red-800",
-  MEDIUM: "bg-amber-900/40 text-amber-300 border-amber-800",
-  LOW: "bg-emerald-900/40 text-emerald-300 border-emerald-800",
+  CRITICAL: "bg-red-500/15 text-red-200 border-red-500/30",
+  HIGH: "bg-rose-500/15 text-rose-200 border-rose-500/30",
+  MEDIUM: "bg-amber-500/15 text-amber-200 border-amber-500/30",
+  LOW: "bg-emerald-500/15 text-emerald-200 border-emerald-500/30",
+  SAFE: "bg-emerald-500/15 text-emerald-200 border-emerald-500/30",
 };
 
 const formatValue = (value) => {
@@ -74,7 +76,7 @@ const HealthCard = ({ label, value, tone = "default", title }) => {
       : "text-slate-200";
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+    <div className="rounded-lg border border-slate-800/80 bg-slate-900/70 p-4">
       <p className="text-xs uppercase tracking-wider text-slate-500">{label}</p>
       <p
         title={title}
@@ -88,7 +90,7 @@ const HealthCard = ({ label, value, tone = "default", title }) => {
 
 const ActionButton = ({ children, icon: Icon, className = "", ...props }) => (
   <button
-    className={`inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800/70 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700/80 bg-slate-800/70 px-3 py-2 text-sm font-medium text-slate-100 transition-colors hover:border-slate-600 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     {...props}
   >
     {Icon ? <Icon size={16} /> : null}
@@ -97,7 +99,7 @@ const ActionButton = ({ children, icon: Icon, className = "", ...props }) => (
 );
 
 const DetailPill = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+  <div className="rounded-lg border border-slate-800/80 bg-slate-950/45 px-3 py-2">
     <p className="text-[11px] uppercase tracking-wider text-slate-500">{label}</p>
     <p className="mt-1 text-sm font-medium text-slate-100">{formatValue(value)}</p>
   </div>
@@ -270,23 +272,29 @@ const CredentialStuffingModule = () => {
     : [];
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-100">
-            Credential Stuffing Detection
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Login behavior monitoring with explainable rules and optional model scoring.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-green-900 bg-green-900/50 px-3 py-1 text-xs text-green-400">
-            System Active
-          </span>
-          <span className="rounded-full border border-blue-900 bg-blue-900/50 px-3 py-1 text-xs text-blue-400">
-            Hybrid ML + Rule Engine
-          </span>
+    <div className="space-y-5 min-h-[calc(100vh-100px)] pb-8">
+      <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)]">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300/80">
+              Detection Module
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-100">
+              Credential Stuffing Detection
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+              Monitor login behavior with explainable rules, optional model
+              scoring, analyst feedback, and retraining evidence.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+              System Active
+            </span>
+            <span className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
+              Hybrid ML + Rule Engine
+            </span>
+          </div>
         </div>
       </div>
 
@@ -324,7 +332,7 @@ const CredentialStuffingModule = () => {
         />
       </div>
 
-      <div className="flex flex-wrap gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-4">
+      <div className="flex flex-wrap gap-3 rounded-xl border border-slate-800/80 bg-slate-900/70 p-4">
         <ActionButton icon={RefreshCw} onClick={fetchHealth} disabled={loading.health}>
           Refresh Health
         </ActionButton>
@@ -342,7 +350,7 @@ const CredentialStuffingModule = () => {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <form
           onSubmit={handleManualSubmit}
-          className="rounded-lg border border-slate-800 bg-slate-900/50 p-5"
+          className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5"
         >
           <div className="mb-5 flex items-center gap-2">
             <KeyRound className="h-5 w-5 text-emerald-400" />
@@ -395,7 +403,7 @@ const CredentialStuffingModule = () => {
           </div>
         </form>
 
-        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-5 xl:col-span-2">
+        <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 xl:col-span-2">
           <div className="mb-5 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-slate-100">Detection Result</h2>
             {detectionResult?.severity ? (
@@ -450,15 +458,21 @@ const CredentialStuffingModule = () => {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[260px] items-center justify-center rounded-lg border border-dashed border-slate-800 text-sm text-slate-500">
-              Submit an event or run a demo to view detection output.
+            <div className="flex min-h-[260px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 px-6 text-center">
+              <p className="text-sm font-medium text-slate-300">
+                No detection result selected
+              </p>
+              <p className="mt-2 max-w-md text-xs leading-5 text-slate-500">
+                Submit a login event, simulate an attack, or run batch analysis
+                to populate risk scoring and evidence.
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50">
-        <div className="flex flex-col gap-2 border-b border-slate-800 p-5 md:flex-row md:items-center md:justify-between">
+      <div className="rounded-xl border border-slate-800/80 bg-slate-900/70">
+        <div className="flex flex-col gap-2 border-b border-slate-800/80 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Recent Alerts</h2>
             <p className="text-sm text-slate-500">
@@ -485,7 +499,10 @@ const CredentialStuffingModule = () => {
             <tbody className="divide-y divide-slate-800">
               {alerts.length > 0 ? (
                 alerts.map((alert) => (
-                  <tr key={alert.alert_id || alert.id} className="text-slate-300">
+                  <tr
+                    key={alert.alert_id || alert.id}
+                    className="text-slate-300 transition-colors hover:bg-slate-800/35"
+                  >
                     <td className="px-4 py-3 font-mono text-xs text-emerald-300">
                       {formatValue(alert.alert_id)}
                     </td>
@@ -529,8 +546,14 @@ const CredentialStuffingModule = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="px-4 py-10 text-center text-slate-500">
-                    No credential stuffing alerts found.
+                  <td colSpan="9" className="px-4 py-10 text-center">
+                    <p className="text-sm font-medium text-slate-300">
+                      No credential stuffing alerts found
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      New alerts will appear here after suspicious login
+                      patterns are submitted or simulated.
+                    </p>
                   </td>
                 </tr>
               )}
@@ -539,7 +562,7 @@ const CredentialStuffingModule = () => {
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-5">
+      <div className="rounded-xl border border-slate-800/80 bg-slate-900/70 p-5">
         <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Retraining Summary</h2>

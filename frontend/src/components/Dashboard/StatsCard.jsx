@@ -1,95 +1,120 @@
 import React from "react";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+} from "lucide-react";
+import { cn } from "../../utils/cn";
 
-const StatsCard = ({ title, value, icon, description, trend }) => {
-  // Icon mapping for different card types
-  const getIcon = () => {
-    if (icon) return icon;
-    
-    if (title.toLowerCase().includes("total")) return "🎯";
-    if (title.toLowerCase().includes("active")) return "⚠️";
-    if (title.toLowerCase().includes("resolved")) return "✅";
-    if (title.toLowerCase().includes("accuracy")) return "📊";
-    return "📈";
-  };
+const toneStyles = {
+  safe: {
+    border: "hover:border-emerald-500/35",
+    icon: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    accent: "from-emerald-400 to-teal-400",
+    value: "text-emerald-100",
+  },
+  critical: {
+    border: "hover:border-red-500/35",
+    icon: "border-red-500/25 bg-red-500/10 text-red-300",
+    accent: "from-red-400 to-rose-400",
+    value: "text-red-100",
+  },
+  warning: {
+    border: "hover:border-amber-500/35",
+    icon: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+    accent: "from-amber-300 to-orange-400",
+    value: "text-amber-100",
+  },
+  info: {
+    border: "hover:border-cyan-500/35",
+    icon: "border-cyan-500/25 bg-cyan-500/10 text-cyan-300",
+    accent: "from-cyan-300 to-blue-400",
+    value: "text-cyan-100",
+  },
+  neutral: {
+    border: "hover:border-slate-600",
+    icon: "border-slate-700 bg-slate-800/80 text-slate-300",
+    accent: "from-slate-400 to-slate-500",
+    value: "text-slate-100",
+  },
+};
 
-  // Color scheme based on title
-  const getColorScheme = () => {
-    if (title.toLowerCase().includes("active")) {
-      return {
-        border: "hover:border-orange-500/30",
-        glow: "group-hover:from-orange-500/5",
-        accent: "from-orange-500 to-red-500",
-        text: "group-hover:text-orange-400/80",
-        value: "group-hover:from-orange-400 group-hover:to-red-300"
-      };
-    }
-    if (title.toLowerCase().includes("resolved")) {
-      return {
-        border: "hover:border-green-500/30",
-        glow: "group-hover:from-green-500/5",
-        accent: "from-green-500 to-emerald-500",
-        text: "group-hover:text-green-400/80",
-        value: "group-hover:from-green-400 group-hover:to-emerald-300"
-      };
-    }
-    if (title.toLowerCase().includes("accuracy")) {
-      return {
-        border: "hover:border-blue-500/30",
-        glow: "group-hover:from-blue-500/5",
-        accent: "from-blue-500 to-cyan-500",
-        text: "group-hover:text-blue-400/80",
-        value: "group-hover:from-blue-400 group-hover:to-cyan-300"
-      };
-    }
-    return {
-      border: "hover:border-emerald-500/30",
-      glow: "group-hover:from-emerald-500/5",
-      accent: "from-emerald-500 to-teal-500",
-      text: "group-hover:text-emerald-400/80",
-      value: "group-hover:from-emerald-400 group-hover:to-emerald-200"
-    };
-  };
+const StatsCard = ({ title, value, icon, description, trend, tone }) => {
+  const normalizedTitle = String(title || "").toLowerCase();
+  const resolvedTone =
+    tone ||
+    (normalizedTitle.includes("active")
+      ? "critical"
+      : normalizedTitle.includes("resolved") ||
+        normalizedTitle.includes("action") ||
+        normalizedTitle.includes("health")
+      ? "safe"
+      : normalizedTitle.includes("accuracy")
+      ? "info"
+      : "neutral");
+  const styles = toneStyles[resolvedTone] || toneStyles.neutral;
 
-  const colors = getColorScheme();
+  const fallbackIcon = normalizedTitle.includes("active") ? (
+    <AlertTriangle className="h-5 w-5" />
+  ) : normalizedTitle.includes("resolved") || normalizedTitle.includes("action") ? (
+    <CheckCircle2 className="h-5 w-5" />
+  ) : normalizedTitle.includes("accuracy") ? (
+    <BarChart3 className="h-5 w-5" />
+  ) : (
+    <Activity className="h-5 w-5" />
+  );
 
   return (
-    <div 
-      className={`relative bg-gradient-to-br from-slate-900/80 to-slate-800/50 backdrop-blur-sm border border-slate-700/50 ${colors.border} rounded-xl p-6 transition-all duration-300 group overflow-hidden shadow-lg hover:shadow-xl`}
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/70 p-5 shadow-[0_18px_45px_rgba(2,6,23,0.18)] transition-all duration-300",
+        styles.border
+      )}
       title={description || title}
     >
-      {/* Subtle glow effect on hover */}
-      <div className={`absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-emerald-500/0 ${colors.glow} group-hover:to-transparent transition-all duration-500`} />
+      <div
+        className={cn(
+          "absolute left-0 top-0 h-0.5 w-full bg-gradient-to-r opacity-80",
+          styles.accent
+        )}
+      />
 
-      {/* Top accent line */}
-      <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r ${colors.accent} group-hover:w-full transition-all duration-300`} />
-
-      {/* Icon */}
-      <div className="relative flex items-center justify-between mb-3">
-        <span className="text-2xl opacity-60 group-hover:opacity-100 transition-opacity">
-          {getIcon()}
-        </span>
-        {trend && (
-          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-            trend > 0 ? 'bg-green-500/20 text-green-400' : 
-            trend < 0 ? 'bg-red-500/20 text-red-400' : 
-            'bg-slate-500/20 text-slate-400'
-          }`}>
-            {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {Math.abs(trend)}%
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-lg border",
+            styles.icon
+          )}
+        >
+          {icon || fallbackIcon}
+        </div>
+        {trend !== undefined && trend !== null && (
+          <span
+            className={cn(
+              "rounded-full border px-2 py-1 text-xs font-semibold",
+              trend > 0
+                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+                : trend < 0
+                ? "border-red-500/25 bg-red-500/10 text-red-300"
+                : "border-slate-700 bg-slate-800/70 text-slate-400"
+            )}
+          >
+            {trend > 0 ? "+" : ""}
+            {trend}%
           </span>
         )}
       </div>
 
-      <p className={`relative text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 ${colors.text} transition-colors`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
         {title}
       </p>
-      <h3 className={`relative text-4xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent ${colors.value} transition-all duration-300`}>
+      <h3 className={cn("mt-3 text-3xl font-semibold tracking-tight", styles.value)}>
         {value}
       </h3>
 
       {description && (
-        <p className="relative text-xs text-slate-500 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          {description}
-        </p>
+        <p className="mt-3 text-xs leading-5 text-slate-500">{description}</p>
       )}
     </div>
   );

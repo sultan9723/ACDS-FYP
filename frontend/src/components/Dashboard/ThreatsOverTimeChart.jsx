@@ -20,7 +20,7 @@ const ThreatsOverTimeChart = () => {
     : [];
 
   return (
-    <div className="col-span-2 relative bg-slate-900/50 backdrop-blur-sm border border-slate-800 hover:border-emerald-500/20 rounded-xl p-4 transition-all duration-300 overflow-hidden">
+    <div className="relative bg-slate-900/70 backdrop-blur-sm border border-slate-800/80 hover:border-emerald-500/20 rounded-xl p-4 transition-all duration-300 overflow-hidden">
       {/* Decorative accent */}
       <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-emerald-500/50 via-teal-500/30 to-transparent" />
 

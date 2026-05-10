@@ -4,12 +4,15 @@ import { cn } from "../../utils/cn";
 const Button = React.forwardRef(
   ({ className, variant = "default", size = "default", ...props }, ref) => {
     const variants = {
-      default: "bg-blue-600 text-white hover:bg-blue-700",
+      default:
+        "bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-950/20 hover:bg-emerald-400",
       outline:
-        "border border-slate-700 bg-transparent hover:bg-slate-800 text-slate-100",
-      ghost: "hover:bg-slate-800 text-slate-100",
-      destructive: "bg-red-900 text-red-100 hover:bg-red-800",
-      secondary: "bg-slate-800 text-slate-100 hover:bg-slate-700",
+        "border border-slate-700/80 bg-slate-950/20 text-slate-100 hover:border-slate-600 hover:bg-slate-800/70",
+      ghost: "text-slate-200 hover:bg-slate-800/70 hover:text-white",
+      destructive:
+        "bg-red-950/70 text-red-100 border border-red-900/70 hover:bg-red-900/80",
+      secondary:
+        "bg-slate-800/90 text-slate-100 border border-slate-700/70 hover:bg-slate-700/90",
     };
 
     const sizes = {
@@ -23,7 +26,7 @@ const Button = React.forwardRef(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:pointer-events-none disabled:opacity-50",
           variants[variant],
           sizes[size],
           className

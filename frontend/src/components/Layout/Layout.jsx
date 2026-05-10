@@ -5,11 +5,13 @@ import Topbar from "./Topbar";
 
 const Layout = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-slate-200 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
       <Sidebar />
       <Topbar />
-      <main className="ml-64 p-6">
-        <Outlet />
+      <main className="px-4 pb-8 pt-6 sm:px-6 lg:ml-64 lg:px-8 lg:pb-10 lg:pt-8">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
