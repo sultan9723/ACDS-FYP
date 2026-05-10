@@ -2,9 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
-const RansomwareList = ({ onSelectThreat }) => {
+const RansomwareList = ({ onSelectThreat, recentScans = [], onScanComplete }) => {
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanInput, setScanInput] = useState("");
@@ -16,12 +16,25 @@ const RansomwareList = ({ onSelectThreat }) => {
     fetchScans();
   }, []);
 
+  useEffect(() => {
+    if (!recentScans.length) return;
+    setScans((prev) => {
+      const existingIds = new Set(prev.map((scan) => scan.id));
+      const newItems = recentScans.filter((scan) => !existingIds.has(scan.id));
+      return [...newItems, ...prev];
+    });
+  }, [recentScans]);
+
   const fetchScans = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/ransomware/scans/list?limit=50`);
       const data = await res.json();
-      if (data.success) setScans(data.scans || []);
+      if (data.success) {
+        const existingIds = new Set(recentScans.map((scan) => scan.id));
+        const fetchedScans = (data.scans || []).filter((scan) => !existingIds.has(scan.id));
+        setScans([...recentScans, ...fetchedScans]);
+      }
     } catch (e) {
       console.error("Failed to fetch ransomware scans:", e);
     } finally {
@@ -43,6 +56,7 @@ const RansomwareList = ({ onSelectThreat }) => {
       if (data.success) {
         setScanResult(data.result);
         if (onSelectThreat) onSelectThreat(data.result);
+        if (onScanComplete) onScanComplete(data.result);
 
         // Add result directly to top of scan list
         const detection = data.result.pipeline_results?.detection || {};
@@ -187,6 +201,7 @@ const RansomwareList = ({ onSelectThreat }) => {
                 {scans.map((scan) => (
                   <tr
                     key={scan.id}
+                    onClick={() => onSelectThreat?.(scan.raw_result || scan)}
                     className="hover:bg-slate-800/30 transition-colors cursor-pointer"
                   >
                     <td className="px-6 py-4 text-slate-300 max-w-[220px] truncate font-mono text-xs">

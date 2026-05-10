@@ -20,6 +20,7 @@ const ThreeLayerDetectionVisualization = ({ result }) => {
   const layers = result.layers || {};
   const layer1 = layers.layer1_command_behavior || {};
   const layer2 = layers.layer2_pe_header || {};
+  const layer2Static = layers.layer2_static_executable_analysis || {};
   const layer3 = layers.layer3_mass_encryption || {};
 
   const getVerdictColor = (verdict) => {
@@ -244,6 +245,114 @@ const ThreeLayerDetectionVisualization = ({ result }) => {
             {layer2.note ||
               "Analyzes PE header features from executable files for ransomware-specific signatures. Filtering ensures detection of ransomware binaries, not generic malware."}
           </p>
+          {layer2.status === "success" && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-slate-800/50 rounded p-2">
+                <p className="text-xs text-slate-500 mb-1">ML Confidence</p>
+                <p className="text-sm font-bold text-slate-200">
+                  {formatConfidence(layer2.model_confidence ?? layer2.confidence)}
+                </p>
+              </div>
+              <div className="bg-slate-800/50 rounded p-2">
+                <p className="text-xs text-slate-500 mb-1">Features</p>
+                <p className="text-sm font-bold text-slate-200">
+                  {layer2.features_extracted ?? "N/A"}
+                </p>
+              </div>
+              <div className="bg-slate-800/50 rounded p-2">
+                <p className="text-xs text-slate-500 mb-1">Model</p>
+                <p className="text-sm font-bold text-slate-200">
+                  {layer2.model_loaded ? "Loaded" : "Unavailable"}
+                </p>
+              </div>
+            </div>
+          )}
+          {layer2Static.status === "success" && (
+            <div className="space-y-3 border-t border-slate-800 pt-3">
+              {result.filename && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Filename</p>
+                  <p className="text-xs font-mono text-slate-300 break-all">
+                    {result.filename}
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-slate-800/50 rounded p-2">
+                  <p className="text-xs text-slate-500 mb-1">Entropy</p>
+                  <p className="text-sm font-bold text-slate-200">
+                    {layer2Static.entropy}
+                  </p>
+                </div>
+                <div className="bg-slate-800/50 rounded p-2">
+                  <p className="text-xs text-slate-500 mb-1">Imports</p>
+                  <p className="text-sm font-bold text-slate-200">
+                    {layer2Static.suspicious_import_count || 0}
+                  </p>
+                </div>
+                <div className="bg-slate-800/50 rounded p-2">
+                  <p className="text-xs text-slate-500 mb-1">YARA</p>
+                  <p className="text-sm font-bold text-slate-200">
+                    {layer2Static.yara?.matches?.length || 0} matches
+                  </p>
+                </div>
+              </div>
+              {layer2Static.sha256 && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">SHA256</p>
+                  <p className="text-xs font-mono text-slate-300 break-all">
+                    {layer2Static.sha256}
+                  </p>
+                </div>
+              )}
+              {layer2Static.suspicious_imports?.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">
+                    Suspicious Imports
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {layer2Static.suspicious_imports.map((importName) => (
+                      <span
+                        key={importName}
+                        className="text-xs px-2 py-1 bg-red-900/30 text-red-300 rounded border border-red-800/50"
+                      >
+                        {importName}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {result.recommended_actions?.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">
+                    Recommended Actions
+                  </p>
+                  <div className="space-y-1">
+                    {result.recommended_actions.map((action) => (
+                      <p
+                        key={action}
+                        className="text-xs text-slate-300 bg-slate-800/40 rounded px-2 py-1"
+                      >
+                        {action}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {layer2Static.indicators?.length > 0 && (
+                <div className="space-y-1">
+                  {layer2Static.indicators.map((indicator) => (
+                    <p
+                      key={indicator}
+                      className="text-xs text-slate-300 bg-slate-800/40 rounded px-2 py-1"
+                    >
+                      {indicator}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
