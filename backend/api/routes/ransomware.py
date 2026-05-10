@@ -11,6 +11,7 @@ import time
 import random
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -86,6 +87,32 @@ except ImportError:
 
 
 router = APIRouter(prefix="/ransomware", tags=["Ransomware Detection"])
+
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+ALLOWED_BINARY_DIR = (BACKEND_ROOT / "data" / "quarantine").resolve()
+
+
+def resolve_safe_binary_path(binary_path: str) -> str:
+    """Resolve PE analysis paths inside the quarantine directory only."""
+    requested_path = Path(binary_path).expanduser()
+    if not requested_path.is_absolute():
+        requested_path = ALLOWED_BINARY_DIR / requested_path
+
+    resolved_path = requested_path.resolve(strict=False)
+    try:
+        resolved_path.relative_to(ALLOWED_BINARY_DIR)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="binary_path must point to a file inside backend/data/quarantine",
+        )
+
+    if not resolved_path.exists():
+        raise HTTPException(status_code=400, detail="binary_path does not exist")
+    if not resolved_path.is_file():
+        raise HTTPException(status_code=400, detail="binary_path is not a file")
+
+    return str(resolved_path)
 
 
 # =============================================================================
@@ -732,13 +759,14 @@ async def detect_three_layers(request: ThreeLayerDetectionRequest):
 
         if request.binary_path and get_pe_detection_service:
             pe_service = get_pe_detection_service()
-            pe_result = pe_service.predict(request.binary_path)
+            safe_binary_path = resolve_safe_binary_path(request.binary_path)
+            pe_result = pe_service.predict(safe_binary_path)
             result["layers"]["layer2_pe_header"] = {
                 "status": "success" if not pe_result.get("error") else "error",
                 "is_ransomware": pe_result.get("is_ransomware", False),
                 "confidence": float(pe_result.get("confidence", 0.0)),
                 "model": "Gradient Boosting Classifier (ransomware-only filtered)",
-                "binary_path": request.binary_path,
+                "binary_path": safe_binary_path,
                 "features_extracted": pe_result.get("features_extracted", 0),
             }
             if pe_result.get("error"):
@@ -826,6 +854,8 @@ async def detect_three_layers(request: ThreeLayerDetectionRequest):
 
         result["processing_time_ms"] = round((time.time() - start_time) * 1000, 2)
         return {"success": True, "result": result}
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"3-layer detection error: {exc}")
 
