@@ -170,8 +170,10 @@ class MassEncryptionDetector:
         """
         self.file_activity_history.append(activity)
         
-        # Track original extension
-        if activity.operation == 'create':
+        # Track the earliest known extension for this path. Some telemetry
+        # streams begin mid-lifecycle and may only contain modify/rename
+        # events, so initialize on first sight as well as on create.
+        if activity.operation == 'create' or activity.path not in self.original_extensions:
             self.original_extensions[activity.path] = activity.extension
     
     def add_command(self, command: str):
