@@ -1,5 +1,6 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
+import ThreeLayerDetectionVisualization from "./ThreeLayerDetectionVisualization";
 
 const getSeverityColor = (severity) => {
   switch (severity?.toUpperCase()) {
@@ -28,6 +29,14 @@ const RansomwareThreatDetails = ({ threat }) => {
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  if (threat.layers) {
+    return (
+      <div className="h-full overflow-auto space-y-4">
+        <ThreeLayerDetectionVisualization result={threat} />
+      </div>
     );
   }
 
