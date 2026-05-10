@@ -239,12 +239,55 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def generate_weak_labels(df: pd.DataFrame) -> pd.Series:
-    labels = (
-        (df["failed_attempts_from_ip"] >= 10)
-        | (df["unique_usernames_from_ip"] >= 5)
-        | (df["unique_ips_for_username"] >= 3)
-        | (df["attempts_per_minute"] >= 10)
-        | (df["success_after_failures"] == 1)
+    reviewed_label_columns = [
+        "label",
+        "analyst_label",
+        "ground_truth_label",
+        "is_credential_stuffing",
+        "credential_stuffing_label",
+    ]
+    for column in reviewed_label_columns:
+        if column in df.columns:
+            reviewed_labels = pd.to_numeric(df[column], errors="coerce").fillna(0)
+            return reviewed_labels.clip(lower=0, upper=1).astype(int)
+
+    feature_columns = [
+        "failed_attempts_from_ip",
+        "unique_usernames_from_ip",
+        "unique_ips_for_username",
+        "attempts_per_minute",
+    ]
+    available_feature_columns = [column for column in feature_columns if column in df.columns]
+    if not available_feature_columns:
+        return pd.Series(0, index=df.index, dtype=int)
+
+    numeric_features = (
+        df[available_feature_columns]
+        .apply(pd.to_numeric, errors="coerce")
+        .fillna(0)
+        .clip(lower=0)
+    )
+
+    adaptive_thresholds = {
+        column: numeric_features[column].quantile(0.95) for column in available_feature_columns
+    }
+    anomaly_votes = pd.DataFrame(index=df.index)
+    for column in available_feature_columns:
+        threshold = adaptive_thresholds[column]
+        if pd.isna(threshold) or threshold <= 0:
+            anomaly_votes[column] = 0
+        else:
+            anomaly_votes[column] = (numeric_features[column] > threshold).astype(int)
+
+    suspicious_signal_count = anomaly_votes.sum(axis=1)
+    success_after_failures = (
+        pd.to_numeric(df.get("success_after_failures", 0), errors="coerce")
+        .fillna(0)
+        .astype(int)
+    )
+
+    labels = (suspicious_signal_count >= 2) | (
+        (success_after_failures == 1) & (suspicious_signal_count >= 1)
     )
     return labels.astype(int)
 

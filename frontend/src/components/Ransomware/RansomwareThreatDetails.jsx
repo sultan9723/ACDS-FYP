@@ -1,5 +1,7 @@
 import React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
+import ThreeLayerDetectionVisualization from "./ThreeLayerDetectionVisualization";
+import ResponseActionsPanel from "./ResponseActionsPanel";
 
 const getSeverityColor = (severity) => {
   switch (severity?.toUpperCase()) {
@@ -17,7 +19,7 @@ const getSeverityColor = (severity) => {
 const RansomwareThreatDetails = ({ threat }) => {
   if (!threat) {
     return (
-      <Card className="bg-slate-900/50 border-slate-800 h-full">
+      <Card className="bg-slate-900/50 border-slate-800 min-h-[320px]">
         <CardHeader>
           <CardTitle className="text-slate-200">Threat Details</CardTitle>
         </CardHeader>
@@ -31,12 +33,21 @@ const RansomwareThreatDetails = ({ threat }) => {
     );
   }
 
+  if (threat.layers) {
+    return (
+      <div className="space-y-4">
+        <ThreeLayerDetectionVisualization result={threat} />
+        <ResponseActionsPanel threat={threat} embedded />
+      </div>
+    );
+  }
+
   const detection = threat.pipeline_results?.detection || {};
   const explain = threat.pipeline_results?.explainability || {};
   const response = threat.pipeline_results?.response || {};
 
   return (
-    <Card className="bg-slate-900/50 border-slate-800 h-full overflow-auto">
+    <Card className="bg-slate-900/50 border-slate-800">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-slate-200 text-base">
@@ -205,6 +216,8 @@ const RansomwareThreatDetails = ({ threat }) => {
             </div>
           </div>
         )}
+
+        <ResponseActionsPanel threat={threat} embedded />
 
         {/* Lifecycle State */}
         <div className="pt-2 border-t border-slate-800">

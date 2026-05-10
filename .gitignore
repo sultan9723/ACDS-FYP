@@ -212,6 +212,12 @@ backend/ml/models/*.json
 
 # Generated Reports
 reports/*.pdf
+reports/ransomware/*
+
+# Quarantined executable samples
+backend/data/quarantine/*
+!backend/data/quarantine/.gitkeep
+backend/data/ransomware_response_audit.json
 
 # Temporary quickstart script
 run_quickstart.py
