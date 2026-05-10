@@ -269,80 +269,6 @@ async def list_scanned_emails(
     }
 
 
-@router.get("/{threat_id}")
-async def get_threat_details(threat_id: str):
-    """
-    Get detailed information about a specific threat.
-    """
-    # Try database first
-    if USE_DATABASE and get_collection:
-        try:
-            collection = get_collection("threats")
-            if collection is not None:
-                threat = collection.find_one({"threat_id": threat_id})
-                if threat:
-                    return {
-                        "success": True,
-                        "threat": {
-                            "id": threat.get("threat_id", str(threat.get("_id"))),
-                            "type": threat.get("threat_type", "Phishing"),
-                            "severity": threat.get("severity", "MEDIUM"),
-                            "confidence": threat.get("confidence", 0),
-                            "status": threat.get("status", "active").title(),
-                            "source": threat.get("email_sender", "unknown"),
-                            "subject": threat.get("email_subject", "No subject"),
-                            "recipient": threat.get("email_recipient", "unknown"),
-                            "detected_at": threat.get("detected_at").isoformat() if threat.get("detected_at") else None,
-                            "content_preview": threat.get("email_content_preview", ""),
-                            "indicators": threat.get("indicators", {}),
-                            "risk_factors": threat.get("risk_factors", []),
-                            "action_taken": threat.get("action_taken"),
-                            "resolved_by": threat.get("resolved_by"),
-                            "resolution_notes": threat.get("resolution_notes"),
-                            "recommendations": [
-                                "Do not click any links in this email",
-                                "Report to IT security team",
-                                "Change passwords if credentials were entered"
-                            ]
-                        },
-                        "data_source": "database"
-                    }
-        except Exception as e:
-            print(f"Database error: {e}")
-    
-    # Fallback to mock threat details
-    return {
-        "success": True,
-        "threat": {
-            "id": threat_id,
-            "type": "Phishing",
-            "severity": "HIGH",
-            "confidence": 94.5,
-            "status": "Active",
-            "source": "suspicious@phishing-domain.com",
-            "subject": "Urgent: Verify Your Account Now",
-            "recipient": "user@company.com",
-            "detected_at": datetime.now(timezone.utc).isoformat(),
-            "content_preview": "Dear Customer, Your account has been compromised...",
-            "indicators": [
-                {"type": "suspicious_link", "value": "http://fake-login.com", "risk": "HIGH"},
-                {"type": "urgency_language", "value": "immediately", "risk": "MEDIUM"},
-                {"type": "sender_mismatch", "value": "Header spoofing detected", "risk": "HIGH"}
-            ],
-            "actions_taken": [
-                {"action": "quarantined", "timestamp": datetime.now(timezone.utc).isoformat()},
-                {"action": "sender_blocked", "timestamp": datetime.now(timezone.utc).isoformat()}
-            ],
-            "recommendations": [
-                "Do not click any links in this email",
-                "Report to IT security team",
-                "Change passwords if credentials were entered"
-            ]
-        },
-        "data_source": "mock"
-    }
-
-
 # Need timedelta import
 from datetime import timedelta
 
@@ -797,4 +723,78 @@ async def update_incident_state(incident_id: str, new_state: str):
         "success": True,
         "incident_id": incident_id,
         "new_state": new_state
+    }
+
+
+@router.get("/{threat_id}")
+async def get_threat_details(threat_id: str):
+    """
+    Get detailed information about a specific threat.
+    """
+    # Try database first
+    if USE_DATABASE and get_collection:
+        try:
+            collection = get_collection("threats")
+            if collection is not None:
+                threat = collection.find_one({"threat_id": threat_id})
+                if threat:
+                    return {
+                        "success": True,
+                        "threat": {
+                            "id": threat.get("threat_id", str(threat.get("_id"))),
+                            "type": threat.get("threat_type", "Phishing"),
+                            "severity": threat.get("severity", "MEDIUM"),
+                            "confidence": threat.get("confidence", 0),
+                            "status": threat.get("status", "active").title(),
+                            "source": threat.get("email_sender", "unknown"),
+                            "subject": threat.get("email_subject", "No subject"),
+                            "recipient": threat.get("email_recipient", "unknown"),
+                            "detected_at": threat.get("detected_at").isoformat() if threat.get("detected_at") else None,
+                            "content_preview": threat.get("email_content_preview", ""),
+                            "indicators": threat.get("indicators", {}),
+                            "risk_factors": threat.get("risk_factors", []),
+                            "action_taken": threat.get("action_taken"),
+                            "resolved_by": threat.get("resolved_by"),
+                            "resolution_notes": threat.get("resolution_notes"),
+                            "recommendations": [
+                                "Do not click any links in this email",
+                                "Report to IT security team",
+                                "Change passwords if credentials were entered"
+                            ]
+                        },
+                        "data_source": "database"
+                    }
+        except Exception as e:
+            print(f"Database error: {e}")
+
+    # Fallback to mock threat details
+    return {
+        "success": True,
+        "threat": {
+            "id": threat_id,
+            "type": "Phishing",
+            "severity": "HIGH",
+            "confidence": 94.5,
+            "status": "Active",
+            "source": "suspicious@phishing-domain.com",
+            "subject": "Urgent: Verify Your Account Now",
+            "recipient": "user@company.com",
+            "detected_at": datetime.now(timezone.utc).isoformat(),
+            "content_preview": "Dear Customer, Your account has been compromised...",
+            "indicators": [
+                {"type": "suspicious_link", "value": "http://fake-login.com", "risk": "HIGH"},
+                {"type": "urgency_language", "value": "immediately", "risk": "MEDIUM"},
+                {"type": "sender_mismatch", "value": "Header spoofing detected", "risk": "HIGH"}
+            ],
+            "actions_taken": [
+                {"action": "quarantined", "timestamp": datetime.now(timezone.utc).isoformat()},
+                {"action": "sender_blocked", "timestamp": datetime.now(timezone.utc).isoformat()}
+            ],
+            "recommendations": [
+                "Do not click any links in this email",
+                "Report to IT security team",
+                "Change passwords if credentials were entered"
+            ]
+        },
+        "data_source": "mock"
     }

@@ -16,7 +16,7 @@ const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("authToken") || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,6 +28,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
@@ -74,6 +76,15 @@ export const getUserProfile = async () => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to get profile" };
+  }
+};
+
+export const logoutUser = async () => {
+  try {
+    const response = await api.post("/auth/logout");
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Logout failed" };
   }
 };
 

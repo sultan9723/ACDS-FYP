@@ -31,7 +31,10 @@ AUDIT_LOG_COLLECTION: str = "audit_logs"
 # =============================================================================
 # JWT / AUTHENTICATION SETTINGS
 # =============================================================================
-JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "acds-secret-key-change-in-production-2024")
+JWT_SECRET_KEY: str = os.getenv(
+    "JWT_SECRET",
+    os.getenv("JWT_SECRET_KEY", "acds-secret-key-change-in-production-2024")
+)
 JWT_ALGORITHM: str = "HS256"
 JWT_EXPIRATION_HOURS: int = 24
 

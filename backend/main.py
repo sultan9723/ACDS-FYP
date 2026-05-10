@@ -17,7 +17,7 @@ except ImportError:
 import os
 import sys
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -52,13 +52,14 @@ app.add_middleware(
 
 # Import route modules
 from api.routes import auth, threats, dashboard, ransomware, malware, feedback, reports, testing, demo, malware_demo, credential_stuffing
+from api.routes.auth import get_current_admin
 
 # Include routers with /api/v1 prefix
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(threats.router, prefix="/api/v1")
 app.include_router(ransomware.router, prefix="/api/v1")  
 app.include_router(malware.router, prefix="/api/v1")
-app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1", dependencies=[Depends(get_current_admin)])
 app.include_router(feedback.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(testing.router, prefix="/api/v1")
