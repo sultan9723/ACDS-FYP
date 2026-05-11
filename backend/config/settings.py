@@ -32,15 +32,15 @@ AUDIT_LOG_COLLECTION: str = "audit_logs"
 # JWT / AUTHENTICATION SETTINGS
 # =============================================================================
 JWT_SECRET_KEY: str = os.getenv(
-    "JWT_SECRET",
-    os.getenv("JWT_SECRET_KEY", "acds-secret-key-change-in-production-2024")
+    "JWT_SECRET_KEY",
+    "acds-dev-jwt-secret-change-this-before-production"
 )
 JWT_ALGORITHM: str = "HS256"
 JWT_EXPIRATION_HOURS: int = 24
 
-# Default admin credentials (for development only)
-DEFAULT_ADMIN_EMAIL: str = "admin@acds.com"
-DEFAULT_ADMIN_PASSWORD: str = "admin123"
+# Default admin credentials must be configured through environment variables for local development.
+DEFAULT_ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@acds.local")
+DEFAULT_ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "ChangeThisLocalAdminPassword!2026")
 
 # =============================================================================
 # ML MODEL SETTINGS (v2.0.0 - TF-IDF + Logistic Regression)
