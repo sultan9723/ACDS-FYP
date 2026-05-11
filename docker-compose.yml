@@ -9,7 +9,7 @@ services:
       - ./models:/app/models
       - ./data:/app/data
     ports:
-      - "8000:8000"
+      - "8010:8010"
     environment:
       - MONGO_URI=mongodb://acds:acds123@mongo:27017/acds?authSource=admin
       - DB_NAME=acds
@@ -32,7 +32,7 @@ services:
     #ports:
     #  - "5173:5173"
     #environment:
-    #  - VITE_API_URL=http://localhost:8000
+    #  - VITE_API_URL=http://localhost:8010
     #depends_on:
     ##  - backend
     #restart: unless-stopped

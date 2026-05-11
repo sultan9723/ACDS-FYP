@@ -4,7 +4,22 @@ import emailDetails from "../mocks/emailDetails.json";
 
 // Create an axios instance
 // Use environment variable for API URL, fallback to localhost
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
+const API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://127.0.0.1:8010/api/v1";
+const AUTH_TOKEN_KEY = "authToken";
+const AUTH_USER_KEY = "authUser";
+
+let unauthorizedHandler = null;
+
+export const setUnauthorizedHandler = (handler) => {
+  unauthorizedHandler = typeof handler === "function" ? handler : null;
+};
+
+export const clearStoredAuth = () => {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+};
 
 const api = axios.create({
   baseURL: API_URL,
@@ -16,7 +31,7 @@ const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -28,8 +43,10 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      clearStoredAuth();
+      if (unauthorizedHandler) {
+        unauthorizedHandler();
+      }
     }
     return Promise.reject(error);
   }
@@ -74,6 +91,15 @@ export const getUserProfile = async () => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to get profile" };
+  }
+};
+
+export const logoutUser = async () => {
+  try {
+    const response = await api.post("/auth/logout");
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Logout failed" };
   }
 };
 
@@ -538,7 +564,8 @@ export const getTestReport = async (reportId) => {
 
 export const checkBackendHealth = async () => {
   try {
-    const response = await axios.get("http://localhost:8000/health");
+    const healthUrl = `${API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "")}/health`;
+    const response = await api.get(healthUrl);
     return { connected: true, ...response.data };
   } catch (error) {
     return { connected: false, error: error.message };

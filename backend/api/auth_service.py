@@ -11,6 +11,10 @@ import secrets
 import json
 import os
 
+DEFAULT_DEV_ADMIN_EMAIL = "admin@acds.local"
+DEFAULT_DEV_ADMIN_PASSWORD = "ChangeThisLocalAdminPassword!2026"
+DEFAULT_JWT_SECRET_KEY = "acds-dev-jwt-secret-change-this-before-production"
+
 
 @dataclass
 class User:
@@ -36,17 +40,20 @@ class AuthService:
     """
 
     def __init__(self, secret_key: str = None):
-        self.secret_key = secret_key or os.getenv("JWT_SECRET_KEY", "acds-secret-key-change-in-production")
+        self.secret_key = secret_key or os.getenv("JWT_SECRET_KEY", DEFAULT_JWT_SECRET_KEY)
         self.token_expiry_hours = 24
+        # Default admin credentials must be configured through environment variables for local development.
+        admin_email = os.getenv("ADMIN_EMAIL", DEFAULT_DEV_ADMIN_EMAIL)
+        admin_password = os.getenv("ADMIN_PASSWORD", DEFAULT_DEV_ADMIN_PASSWORD)
         
         # In-memory user store (replace with database in production)
         self.users: Dict[str, User] = {
-            "admin@acds.com": User(
+            admin_email: User(
                 id=1,
-                email="admin@acds.com",
+                email=admin_email,
                 name="Admin User",
                 role="admin",
-                password_hash=self._hash_password("admin123")
+                password_hash=self._hash_password(admin_password)
             )
         }
         
@@ -248,7 +255,10 @@ auth_service = AuthService()
 # Example usage
 if __name__ == "__main__":
     # Test authentication
-    result = auth_service.authenticate("admin@acds.com", "admin123")
+    result = auth_service.authenticate(
+        os.getenv("ADMIN_EMAIL", DEFAULT_DEV_ADMIN_EMAIL),
+        os.getenv("ADMIN_PASSWORD", DEFAULT_DEV_ADMIN_PASSWORD),
+    )
     print("Login result:", json.dumps(result, indent=2, default=str))
     
     if result["success"]:

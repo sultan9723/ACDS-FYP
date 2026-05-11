@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
 import { Badge } from "../ui/Badge";
-
-const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+import api from "../../utils/api";
 
 const fakeLogs = [
   "Monitoring file system...",
@@ -143,7 +142,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
             }))
           : null;
 
-      let endpoint = `${API_BASE}/ransomware/detect-layers`;
+      let endpoint = "/ransomware/detect-layers";
       let payload = {
         command: detectingMode !== "encryption" ? commandInput : null,
         binary_path: binaryPath.trim() || null,
@@ -155,7 +154,7 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
       };
 
       if (detectingMode === "command") {
-        endpoint = `${API_BASE}/ransomware/scan`;
+        endpoint = "/ransomware/scan";
         payload = {
           command: commandInput,
           source_host: "TEST-WORKSTATION",
@@ -163,20 +162,13 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
           user: "test@domain.com",
         };
       } else if (detectingMode === "encryption") {
-        endpoint = `${API_BASE}/ransomware/monitor-encryption`;
+        endpoint = "/ransomware/monitor-encryption";
         payload = fileActivities;
       }
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json().catch(() => ({}));
+      const response = await api.post(endpoint, payload);
+      const data = response.data || {};
 
-      if (!response.ok) {
-        throw new Error(data.detail || `Detection request failed with HTTP ${response.status}`);
-      }
       if (!data.success) {
         throw new Error(data.detail || "Detection failed");
       }
@@ -242,48 +234,52 @@ const ThreeLayerDetectionScanner = ({ onDetectionResult }) => {
     const formData = new FormData();
     formData.append("file", selectedExe);
 
-    const xhr = new XMLHttpRequest();
-    activeUploadRef.current = xhr;
-    xhr.open("POST", `${API_BASE}/ransomware/upload-executable`);
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        setUploadProgress(Math.round((event.loaded / event.total) * 100));
-        setUploadPhase("Uploading sample");
-      }
-    };
-    xhr.onload = () => {
-      setUploadingExe(false);
-      activeUploadRef.current = null;
-      try {
-        const data = JSON.parse(xhr.responseText || "{}");
-        if (xhr.status >= 200 && xhr.status < 300 && data.success) {
-          setUploadProgress(100);
-          setUploadPhase("Analysis complete");
-          setUploadResult(data.result);
-          setResult(data.result);
-          setBinaryPath(data.result.sample?.path || "");
-          if (onDetectionResult) onDetectionResult(data.result);
-        } else {
-          setUploadPhase("Analysis failed");
-          setError(data.detail || "Executable analysis failed");
-        }
-      } catch (parseError) {
+    const controller = new AbortController();
+    activeUploadRef.current = controller;
+
+    try {
+      const response = await api.post("/ransomware/upload-executable", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        signal: controller.signal,
+        onUploadProgress: (event) => {
+          if (event.total) {
+            setUploadProgress(Math.round((event.loaded / event.total) * 100));
+            setUploadPhase("Uploading sample");
+          }
+        },
+      });
+
+      const data = response.data || {};
+      if (data.success) {
+        setUploadProgress(100);
+        setUploadPhase("Analysis complete");
+        setUploadResult(data.result);
+        setResult(data.result);
+        setBinaryPath(data.result.sample?.path || "");
+        if (onDetectionResult) onDetectionResult(data.result);
+      } else {
         setUploadPhase("Analysis failed");
-        setError(`Executable analysis failed: ${parseError.message}`);
+        setError(data.detail || "Executable analysis failed");
       }
-    };
-    xhr.onerror = () => {
+    } catch (uploadError) {
+      const isCancelled =
+        uploadError?.name === "CanceledError" ||
+        uploadError?.code === "ERR_CANCELED";
+
+      if (isCancelled) {
+        setUploadPhase("Upload cancelled");
+      } else {
+        setUploadPhase("Upload failed");
+        setError(
+          uploadError?.response?.data?.detail ||
+            uploadError?.message ||
+            "Executable upload failed"
+        );
+      }
+    } finally {
       setUploadingExe(false);
       activeUploadRef.current = null;
-      setUploadPhase("Upload failed");
-      setError("Executable upload failed");
-    };
-    xhr.onabort = () => {
-      setUploadingExe(false);
-      activeUploadRef.current = null;
-      setUploadPhase("Upload cancelled");
-    };
-    xhr.send(formData);
+    }
   };
 
   const formatConfidence = (value) => {

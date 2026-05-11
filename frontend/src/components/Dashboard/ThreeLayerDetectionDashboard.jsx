@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/Card";
-
-const API_BASE = "http://localhost:8000/api/v1";
+import api from "../../utils/api";
 
 const ThreeLayerDetectionDashboard = () => {
   const [layerStatus, setLayerStatus] = useState(null);
@@ -23,8 +22,8 @@ const ThreeLayerDetectionDashboard = () => {
 
   const fetchLayerStatus = async () => {
     try {
-      const res = await fetch(`${API_BASE}/ransomware/layers/status`);
-      const data = await res.json();
+      const res = await api.get("/ransomware/layers/status");
+      const data = res.data;
       if (data.success) {
         setLayerStatus(data.status);
       }
@@ -36,8 +35,8 @@ const ThreeLayerDetectionDashboard = () => {
   const fetchThreats = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/ransomware/list?limit=100`);
-      const data = await res.json();
+      const res = await api.get("/ransomware/list", { params: { limit: 100 } });
+      const data = res.data;
       if (data.success) {
         setThreats(data.threats || []);
         

@@ -7,6 +7,7 @@ Uses MongoDB database with fallback to in-memory storage.
 
 import hashlib
 import jwt
+import bcrypt
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Header
@@ -34,7 +35,7 @@ try:
         DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD
     )
 except ImportError:
-    JWT_SECRET_KEY = "acds-secret-key"
+    JWT_SECRET_KEY = "acds-secret-key-change-in-production-2024"
     JWT_ALGORITHM = "HS256"
     JWT_EXPIRATION_HOURS = 24
     DEFAULT_ADMIN_EMAIL = "admin@acds.com"
@@ -50,6 +51,35 @@ except ImportError:
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    return hashed.decode("utf-8")
+
+
+def _legacy_hash_password(password: str) -> str:
+    """Legacy SHA-256 hash (kept only for backward compatibility)."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def verify_password(plain_password: str, stored_hash: Optional[str]) -> bool:
+    """Verify password against bcrypt hash with legacy SHA-256 fallback."""
+    if not stored_hash:
+        return False
+
+    # bcrypt hashes start with $2a$, $2b$, or $2y$
+    if stored_hash.startswith("$2"):
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode("utf-8"),
+                stored_hash.encode("utf-8"),
+            )
+        except Exception:
+            return False
+
+    return _legacy_hash_password(plain_password) == stored_hash
+
 # In-memory user store (fallback when database unavailable)
 users_db = {
     DEFAULT_ADMIN_EMAIL: {
@@ -57,7 +87,7 @@ users_db = {
         "email": DEFAULT_ADMIN_EMAIL,
         "name": "System Administrator",
         "role": "admin",
-        "password_hash": hashlib.sha256(DEFAULT_ADMIN_PASSWORD.encode()).hexdigest(),
+        "password_hash": hash_password(DEFAULT_ADMIN_PASSWORD),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "last_login": None,
         "is_active": True
@@ -68,14 +98,14 @@ users_db = {
 active_tokens = {}
 
 
-def hash_password(password: str) -> str:
-    """Hash a password using SHA-256."""
-    return hashlib.sha256(password.encode()).hexdigest()
-
-
 def get_user_by_email(email: str) -> Optional[dict]:
     """Get user by email from database or in-memory store."""
     email = email.lower()
+
+    # Fast path: in-memory users (default admin fallback)
+    local_user = users_db.get(email)
+    if local_user:
+        return local_user
     
     if USE_DATABASE and get_collection:
         try:
@@ -89,12 +119,18 @@ def get_user_by_email(email: str) -> Optional[dict]:
             print(f"Database error: {e}")
     
     # Fallback to in-memory store
-    return users_db.get(email)
+    return local_user
 
 
 def update_user_login(user_id: str, email: str):
     """Update user's last login timestamp."""
     email = email.lower()
+
+    # Update in-memory users immediately and avoid sync DB roundtrip delays
+    if email in users_db:
+        users_db[email]["last_login"] = datetime.now(timezone.utc).isoformat()
+        users_db[email]["login_count"] = users_db[email].get("login_count", 0) + 1
+        return
     
     if USE_DATABASE and get_collection:
         try:
@@ -135,6 +171,22 @@ def ensure_admin_exists():
                         "preferences": {}
                     })
                     print("✅ Created default admin user in database")
+                else:
+                    # Keep development admin usable after auth/hash migrations.
+                    # If default password no longer validates, reset hash and critical flags.
+                    stored_hash = admin.get("password_hash")
+                    if not verify_password(DEFAULT_ADMIN_PASSWORD, stored_hash):
+                        collection.update_one(
+                            {"email": DEFAULT_ADMIN_EMAIL},
+                            {
+                                "$set": {
+                                    "password_hash": hash_password(DEFAULT_ADMIN_PASSWORD),
+                                    "role": "admin",
+                                    "is_active": True,
+                                }
+                            },
+                        )
+                        print("✅ Updated default admin credentials in database")
         except Exception as e:
             print(f"Admin creation error: {e}")
 
@@ -195,6 +247,13 @@ async def get_current_user(authorization: str = Header(None)):
     return user
 
 
+async def get_current_admin(user: dict = Depends(get_current_user)):
+    """Dependency to enforce admin-only access."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
 @router.post("/login")
 async def login(credentials: UserLogin):
     """
@@ -215,9 +274,8 @@ async def login(credentials: UserLogin):
     if not user.get("is_active", True):
         raise HTTPException(status_code=401, detail="Account is disabled")
     
-    # Verify password
-    password_hash = hash_password(credentials.password)
-    if password_hash != user.get("password_hash"):
+    # Verify password (bcrypt with legacy fallback)
+    if not verify_password(credentials.password, user.get("password_hash")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     # Get user ID (from MongoDB _id or id field)
@@ -247,6 +305,12 @@ async def login(credentials: UserLogin):
             "role": user.get("role", "user")
         }
     }
+
+
+@router.get("/profile")
+async def get_user_profile(user: dict = Depends(get_current_user)):
+    """Frontend compatibility alias for /me."""
+    return await get_current_user_info(user)
 
 
 @router.post("/logout")
@@ -350,7 +414,7 @@ async def change_password(
     Change current user's password.
     """
     # Verify current password
-    if hash_password(request.current_password) != user.get("password_hash"):
+    if not verify_password(request.current_password, user.get("password_hash")):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     
     new_hash = hash_password(request.new_password)
@@ -403,6 +467,12 @@ async def validate_token(authorization: str = Header(None)):
         "role": payload.get("role"),
         "expires": payload.get("exp")
     }
+
+
+@router.post("/verify")
+async def verify_token_alias(authorization: str = Header(None)):
+    """Frontend compatibility alias for /validate-token."""
+    return await validate_token(authorization)
 
 
 @router.get("/users")

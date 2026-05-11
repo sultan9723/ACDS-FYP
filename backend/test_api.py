@@ -2,14 +2,14 @@
 API Endpoint Test Script
 ========================
 Tests all API endpoints of the ACDS backend.
-Run this after starting the server with: uvicorn main:app --host 0.0.0.0 --port 8000
+Run this after starting the server with: uvicorn main:app --host 0.0.0.0 --port 8010
 """
 
 import requests
 import json
 import sys
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8010"
 API_PREFIX = "/api/v1"
 
 def print_header(title):
@@ -35,7 +35,7 @@ def test_health():
             print(f"         Response: {json.dumps(data, indent=2)[:200]}...")
         return passed
     except requests.exceptions.ConnectionError:
-        print_result("Connection", False, "Server not running at localhost:8000")
+        print_result("Connection", False, "Server not running at localhost:8010")
         return False
     except Exception as e:
         print_result("Health endpoint", False, str(e))
